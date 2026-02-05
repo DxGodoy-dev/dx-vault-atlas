@@ -73,8 +73,8 @@ def run_automation() -> None:
     
     # Inicializamos kwargs para la instancia
     note_kwargs = {
-        "title": raw_title,
-        "aliases": f"[{raw_title}]",
+        "title": f'"{raw_title}"',
+        "aliases": f'["{raw_title}"]',
         "source": source,
         "priority": priority,
         "tags": DEFAULT_TAGS,
