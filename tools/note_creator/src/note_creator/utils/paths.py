@@ -15,8 +15,7 @@ class ProjectPaths:
     # 2. LOCALIZACIÓN EXTERNA (Datos del Usuario)
     # Definimos la raíz de trabajo donde el usuario lanza el comando
     # Si prefieres una carpeta fija como ~/.config/note_creator, se cambiaría aquí
-    USER_ROOT: Path = Path.cwd()
-    APP_DIR: Path = USER_ROOT / "dx-vault-atlas"
+    APP_DIR: Path = Path.home() / "dx-vault-atlas"
     LOGS: Path = APP_DIR / "logs"
     NOTES: Path = APP_DIR / "notes"
     LOG_FILE: Path = LOGS / "automation.log"

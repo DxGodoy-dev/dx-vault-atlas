@@ -87,7 +87,6 @@ def run_automation() -> None:
         area = _choose_enum("Area (Work/Personal)", NoteArea, default_index=0)
         note_kwargs["area"] = area
 
-    logger.info(f"DEBUG: kwargs preparados: {note_kwargs}")
     note_data = NoteClass(**note_kwargs)
     output_path = ProjectPaths.NOTES / f"{safe_title}.md"
 

@@ -2,10 +2,19 @@
 version: {{ version }}
 title: {{ title }}
 aliases: {{ aliases }}
-tags: [moc, "{{area}}"]
+tags: {{ tags }}
 date: {{ date | format_date }}
 type: {{ type }}
-nivel: {{1, 2 o 3}}
+priority: {{ priority }}
+level: 
 up: [[ ]]         
-priority: {{priority}}
 ---
+
+
+
+
+
+
+
+
+

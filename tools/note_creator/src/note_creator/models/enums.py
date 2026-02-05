@@ -24,10 +24,11 @@ class NoteStatus(str, Enum):
 class NoteSource(str, Enum):
     """Source of the note content."""
 
-    GEMINI = "gemini"
+    IA = "ia"
     DOCUMENTATION = "documentation"
     RESEARCH = "research"
     YOUTUBE = "youtube"
+    ME = "me"
     OTHER = "other"
 
 

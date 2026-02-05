@@ -2,14 +2,19 @@
 version: {{ version }}
 title: {{ title }}
 aliases: {{ aliases }}
-tags: [{{ tags|join(', ') }}]
+tags: {{ tags }}
 date: {{ date | format_date }}
-priority: {{ priority }}
 type: {{ template }}
+priority: {{ priority }}
 area: {{ area }}
 status: {{ status }}
 deadline: 
 ---
+
+
+
+
+
 
 
 
