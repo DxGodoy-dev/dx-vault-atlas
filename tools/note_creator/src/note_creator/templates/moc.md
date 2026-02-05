@@ -7,7 +7,7 @@ date: {{ date | format_date }}
 type: {{ type }}
 priority: {{ priority }}
 level: 
-up: [[ ]]         
+up: "[[ ]]"         
 ---
 
 

@@ -1,6 +1,11 @@
 import sys
 import os
 
+from typing import TypeVar
+from enum import Enum
+
+_E = TypeVar("_E", bound=Enum)
+
 class ConsoleInterface:
     """Service to handle clean I/O operations for CLI tools."""
 
@@ -27,3 +32,22 @@ class ConsoleInterface:
             
         except EOFError:
             return ""
+
+    @staticmethod
+    def choose_enum(label: str, enum_cls: type[_E], default_index: int = 0) -> _E:
+        """Shows a numbered menu for the enum and returns the selected member."""
+        members = list(enum_cls)
+        for i, m in enumerate(members):
+            display = m.value if isinstance(m.value, str) else f"{m.name} ({m.value})"
+            print(f"  {i + 1}. {display}")
+        
+        prompt = f"\n{label} [1-{len(members)}] (default {default_index + 1}): "
+        raw = ConsoleInterface.query(prompt).strip() or str(default_index + 1)
+        
+        try:
+            idx = int(raw)
+            if 1 <= idx <= len(members):
+                return members[idx - 1]
+        except ValueError:
+            pass
+        return members[default_index]
