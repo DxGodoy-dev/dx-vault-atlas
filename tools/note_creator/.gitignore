@@ -1,0 +1,29 @@
+# --- Python & Environment ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+build/
+dist/
+*.egg-info/
+
+# --- Automation Specific ---
+# Ignoramos los logs locales para que no pesen en el repo
+dx-vault-atlas/
+*.md
+*.swp
+
+# --- OS & IDE ---
+.DS_Store
+.vscode/
+.idea/
+.obsidian/
+.trash/
+
+# --- Tests ---
+.pytest_cache/
+.coverage
+htmlcov/
