@@ -1,0 +1,3 @@
+[submodule ".standard"]
+	path = .standard
+	url = git@github.com:DxGodoy-dev/dx-dev-standards.git
