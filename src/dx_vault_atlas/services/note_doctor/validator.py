@@ -21,6 +21,9 @@ from dx_vault_atlas.services.note_creator.models.note import (
     RefNote,
     TaskNote,
 )
+from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
+    TitleNormalizer,
+)
 from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
     YamlParseError,
     YamlParserService,
@@ -48,9 +51,9 @@ _TARGET_VERSION = parse_version(SCHEMA_VERSION)
 
 
 def _normalize(text: str) -> str:
-    """Lowercase, collapse spaces/dashes to underscores, strip timestamps."""
-    text = text.lower().replace(" ", "_").replace("-", "_")
-    return re.sub(r"^\d{12,14}[_-]", "", text)
+    """Sanitize text for comparison, stripping accents and timestamps."""
+    text = TitleNormalizer.sanitize(text)
+    return re.sub(r"^\d{12,14}_", "", text)
 
 
 def _format_pydantic_errors(exc: ValidationError) -> str:

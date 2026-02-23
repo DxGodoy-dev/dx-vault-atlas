@@ -1,5 +1,6 @@
 """Note Doctor application orchestrator."""
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,9 @@ from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
     NoteSource,
     Priority,
+)
+from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
+    TitleNormalizer,
 )
 from dx_vault_atlas.services.note_doctor.core.fixer import NoteFixer
 from dx_vault_atlas.services.note_doctor.core.patcher import (
@@ -36,6 +40,9 @@ _ENUM_OPTIONS: dict[str, list[Any]] = {
 
 # Fields handled separately in CLI gather flow
 _SKIP_FIELDS = {"title", "aliases", "dates", "version", "status", "tags"}
+
+# Maximum fix attempts before skipping a note
+_MAX_FIX_ATTEMPTS = 2
 
 
 class DoctorApp:
@@ -289,8 +296,19 @@ class DoctorApp:
         file_path = result.file_path
         ui.console.print(f"\n[cyan]━━━ [{index}/{total}] {file_path.name} ━━━[/cyan]")
 
+        # Handle filename mismatch before the fix loop
+        if "integrity_filename" in result.invalid_fields:
+            rename_out = self._handle_rename(result)
+            if rename_out is not None:
+                file_path, result = rename_out
+                if result.is_valid:
+                    ui.console.print(
+                        f"[green]Note {file_path.name} is now valid.[/green]"
+                    )
+                    return None
+
         frontmatter = dict(result.frontmatter)
-        while True:
+        for _attempt in range(_MAX_FIX_ATTEMPTS):
             self._print_issues(
                 result.missing_fields,
                 result.invalid_fields,
@@ -327,7 +345,48 @@ class DoctorApp:
             frontmatter = dict(result.frontmatter)
             ui.console.print("[yellow]Note still has issues. Continuing...[/yellow]")
 
+        ui.console.print(
+            f"[red]Could not fully fix {file_path.name} "
+            f"after {_MAX_FIX_ATTEMPTS} attempts. Skipping.[/red]"
+        )
+        return None
+
     # -- helpers (printing / writing) ---------------------------------------
+
+    def _handle_rename(
+        self,
+        result: ValidationResult,
+    ) -> tuple[Path, ValidationResult] | None:
+        """Offer to rename file to match title.
+
+        Returns:
+            ``(new_path, new_result)`` on success, or ``None``.
+        """
+        title = result.frontmatter.get("title", "")
+        if not title:
+            return None
+
+        stem = result.file_path.stem
+        ts_match = re.match(r"^(\d{12,14})[_-]", stem)
+        prefix = ts_match.group(0) if ts_match else ""
+
+        norm_title = TitleNormalizer.sanitize(title)
+        new_name = f"{prefix}{norm_title}{result.file_path.suffix}"
+        new_path = result.file_path.parent / new_name
+
+        if new_path == result.file_path:
+            return None
+
+        ui.console.print(
+            f"[yellow]Filename mismatch:[/yellow] {result.file_path.name} → {new_name}"
+        )
+        if not ui.confirm("Rename file?", default=True):
+            return None
+
+        result.file_path.rename(new_path)
+        ui.console.print(f"[green]Renamed → {new_name}[/green]")
+        new_result = self.validator.validate(new_path)
+        return new_path, new_result
 
     @staticmethod
     def _print_issues(

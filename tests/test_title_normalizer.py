@@ -28,18 +28,18 @@ class TestTitleNormalizer:
 
     def test_sanitize_removes_accents(self) -> None:
         """Accents should be removed (e.g. é -> e)."""
-        result = TitleNormalizer._sanitize("Créme Brûlée")
+        result = TitleNormalizer.sanitize("Créme Brûlée")
         assert result == "creme_brulee"
 
     def test_sanitize_removes_special_chars(self) -> None:
         """Non-alphanumeric chars should be replaced by underscores."""
-        result = TitleNormalizer._sanitize("hello@world#python")
+        result = TitleNormalizer.sanitize("hello@world#python")
         assert result == "hello_world_python"
 
     def test_sanitize_trims_underscores(self) -> None:
         """Leading/trailing underscores should be removed."""
-        result = TitleNormalizer._sanitize("  hello world  ")
+        result = TitleNormalizer.sanitize("  hello world  ")
         assert result == "hello_world"
 
-        result = TitleNormalizer._sanitize("__hello__")
+        result = TitleNormalizer.sanitize("__hello__")
         assert result == "hello"

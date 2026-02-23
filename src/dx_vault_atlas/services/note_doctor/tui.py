@@ -24,6 +24,8 @@ class DoctorTUI:
         missing = set(result.missing_fields)
         invalid = set(result.invalid_fields)
         invalid.discard("dates")
+        invalid.discard("integrity_filename")
+        invalid.discard("integrity_aliases")
 
         # Auto-fill logic for InfoNote status
         # If type is already "info" (in frontmatter) and status is missing,

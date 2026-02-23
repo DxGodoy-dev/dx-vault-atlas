@@ -26,12 +26,12 @@ class TitleNormalizer:
             raise ValueError(msg)
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        clean_name = cls._sanitize(raw_title)
+        clean_name = cls.sanitize(raw_title)
 
         return f"{timestamp}_{clean_name}"
 
     @staticmethod
-    def _sanitize(text: str) -> str:
+    def sanitize(text: str) -> str:
         """Clean string for use as filename.
 
         Args:
