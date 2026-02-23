@@ -1,0 +1,1 @@
+"""Note Migrator service package."""
