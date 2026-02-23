@@ -24,14 +24,16 @@ class ConfigEditor:
         while True:
             self._show_main_menu()
             choice = IntPrompt.ask(
-                "Select option", choices=["0", "1", "2", "3", "4"], default=4
+                "Select option",
+                choices=["0", "1", "2", "3", "4", "5"],
+                default=5,
             )
 
             if choice == 0:
                 ui.console.print("[yellow]Changes discarded.[/yellow]")
                 return
 
-            if choice == 4:
+            if choice == 5:
                 get_config_manager().save(config)
                 ui.console.print("\n[green]✓ Configuration saved.[/green]")
                 return
@@ -59,6 +61,8 @@ class ConfigEditor:
             self._edit_editor(config)
         elif choice == 3:
             self._edit_mappings(config)
+        elif choice == 4:
+            self._edit_value_mappings(config)
 
     def _show_main_menu(self) -> None:
         """Display main menu options."""
@@ -67,10 +71,9 @@ class ConfigEditor:
         ui.console.print("\n[dim]Select a category to edit:[/dim]\n")
         ui.console.print("  [cyan]1.[/cyan] Paths (Vault & Inbox)")
         ui.console.print("  [cyan]2.[/cyan] Editor")
-        ui.console.print(
-            "  [cyan]3.[/cyan] Field Mappings [dim](Rename variables)[/dim]"
-        )
-        ui.console.print("  [cyan]4.[/cyan] Save & Exit")
+        ui.console.print("  [cyan]3.[/cyan] Field Mappings [dim](Rename keys)[/dim]")
+        ui.console.print("  [cyan]4.[/cyan] Value Mappings [dim](Replace values)[/dim]")
+        ui.console.print("  [cyan]5.[/cyan] Save & Exit")
         ui.console.print("  [cyan]0.[/cyan] Cancel (Discard changes)")
         ui.console.print()
 
@@ -172,4 +175,86 @@ class ConfigEditor:
             ui.console.print(f"[yellow]Deleted mapping for {key_to_del}[/yellow]")
         elif key_to_del:
             ui.console.print("[red]Mapping not found.[/red]")
+            Prompt.ask("Press Enter to continue")
+
+    # -- value mappings -----------------------------------------------------
+
+    def _edit_value_mappings(self, config: GlobalConfig) -> None:
+        """Edit value mappings (per-field value replacement)."""
+        while True:
+            ui.console.clear()
+            ui.console.rule("[bold]Value Mappings (Replace)[/bold]")
+            ui.console.print(
+                "\n[dim]Replace values in specific fields (Field → Old → New).[/dim]\n"
+            )
+
+            if not config.value_mappings:
+                ui.console.print("  [dim]No value mappings defined.[/dim]")
+            else:
+                idx = 1
+                for field, reps in config.value_mappings.items():
+                    for old_v, new_v in reps.items():
+                        ui.console.print(
+                            f"  {idx}. [cyan]{field}[/cyan]:"
+                            f" [yellow]{old_v}[/yellow]"
+                            f" → [green]{new_v}[/green]"
+                        )
+                        idx += 1
+
+            ui.console.print("\n  [cyan]A.[/cyan] Add Mapping")
+            ui.console.print("  [cyan]D.[/cyan] Delete Mapping")
+            ui.console.print("  [cyan]0.[/cyan] Back")
+            ui.console.print()
+
+            action = Prompt.ask(
+                "Select action",
+                choices=["0", "a", "A", "d", "D"],
+                default="0",
+            ).lower()
+
+            if action == "0":
+                break
+            if action == "a":
+                self._add_value_mapping(config)
+            elif action == "d":
+                self._delete_value_mapping(config)
+
+    def _add_value_mapping(self, config: GlobalConfig) -> None:
+        """Add a new value mapping."""
+        field = Prompt.ask("Field name (e.g. source)")
+        if not field:
+            return
+        old_val = Prompt.ask(f"Old value to replace in '{field}'")
+        if not old_val:
+            return
+        new_val = Prompt.ask(f"New value for '{old_val}'")
+        if new_val:
+            config.value_mappings.setdefault(field, {})
+            config.value_mappings[field][old_val] = new_val
+
+    def _delete_value_mapping(
+        self,
+        config: GlobalConfig,
+    ) -> None:
+        """Delete an existing value mapping."""
+        if not config.value_mappings:
+            return
+
+        field = Prompt.ask("Field name (or empty to cancel)")
+        if not field or field not in config.value_mappings:
+            if field:
+                ui.console.print("[red]Field not found.[/red]")
+                Prompt.ask("Press Enter to continue")
+            return
+
+        old_val = Prompt.ask(f"Old value to remove from '{field}' (or empty to cancel)")
+        if not old_val:
+            return
+        if old_val in config.value_mappings[field]:
+            del config.value_mappings[field][old_val]
+            if not config.value_mappings[field]:
+                del config.value_mappings[field]
+            ui.console.print(f"[yellow]Deleted {field}: {old_val}[/yellow]")
+        else:
+            ui.console.print("[red]Value not found.[/red]")
             Prompt.ask("Press Enter to continue")

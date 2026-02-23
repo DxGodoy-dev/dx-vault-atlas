@@ -191,6 +191,12 @@ class DoctorApp:
 
         has_changes, fm_final, body = self.fixer.fix(note_path)
 
+        # Apply config-driven mappings
+        if self._apply_field_mappings(fm_final):
+            has_changes = True
+        if self._apply_value_mappings(fm_final):
+            has_changes = True
+
         if result.is_valid and not has_changes:
             return self._tag_valid(result, note_path)
 
@@ -206,6 +212,45 @@ class DoctorApp:
             return "version"
 
         return result
+
+    # -- config-driven mappings ---------------------------------------------
+
+    def _apply_field_mappings(
+        self,
+        frontmatter: dict[str, Any],
+    ) -> bool:
+        """Rename frontmatter keys based on ``field_mappings`` config.
+
+        Returns ``True`` if any key was renamed.
+        """
+        changed = False
+        for old_key, new_key in self.settings.field_mappings.items():
+            if old_key in frontmatter:
+                if new_key not in frontmatter:
+                    frontmatter[new_key] = frontmatter[old_key]
+                del frontmatter[old_key]
+                changed = True
+        return changed
+
+    def _apply_value_mappings(
+        self,
+        frontmatter: dict[str, Any],
+    ) -> bool:
+        """Replace frontmatter values based on ``value_mappings`` config.
+
+        Returns ``True`` if any value was replaced.
+        """
+        changed = False
+        for field, replacements in self.settings.value_mappings.items():
+            if field in frontmatter and isinstance(
+                frontmatter[field],
+                str,
+            ):
+                old_val = frontmatter[field]
+                if old_val in replacements:
+                    frontmatter[field] = replacements[old_val]
+                    changed = True
+        return changed
 
     def _tag_valid(
         self,

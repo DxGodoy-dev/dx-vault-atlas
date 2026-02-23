@@ -63,25 +63,6 @@ class TransformationService:
                 f"Transforming {file_path.name}. Original keys: {list(data.keys())}"
             )
 
-        # 1. Apply Field Mappings (Renaming)
-        for old_field, new_field in self.settings.field_mappings.items():
-            if old_field in data:
-                # Move check
-                if new_field not in data:
-                    data[new_field] = data[old_field]
-                    del data[old_field]
-                    has_changes = True
-                    if debug_mode:
-                        logger.debug(f"Renamed field '{old_field}' -> '{new_field}'")
-                else:
-                    # Both exist, clean old
-                    del data[old_field]
-                    has_changes = True
-                    if debug_mode:
-                        logger.debug(
-                            f"Removed old field '{old_field}' (new '{new_field}' already exists)"
-                        )
-
         if rename_only:
             return data, has_changes
 
