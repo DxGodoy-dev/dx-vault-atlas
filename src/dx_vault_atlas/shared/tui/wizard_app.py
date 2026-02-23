@@ -3,6 +3,7 @@
 from typing import Any
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.widgets import Input, Label, OptionList, Static
 
 from dx_vault_atlas.shared.tui.app import BaseApp
@@ -12,6 +13,11 @@ from dx_vault_atlas.shared.tui.wizard import WizardConfig, WizardStep
 
 class WizardApp(BaseApp):
     """Generic wizard TUI driven by configuration."""
+
+    BINDINGS = [
+        Binding("s", "skip", "Skip", show=True),
+        Binding("ctrl+s", "skip", "Skip", show=False),
+    ]
 
     def __init__(self, config: WizardConfig) -> None:
         """Initialize wizard.

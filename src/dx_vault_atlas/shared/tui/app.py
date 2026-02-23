@@ -1,8 +1,11 @@
 """Base TUI application with shared configuration."""
 
-from textual.app import App, ComposeResult
+from collections.abc import Iterable
+
+from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Container, Vertical
+from textual.screen import Screen
 from textual.widgets import Footer, Static
 
 from dx_vault_atlas.shared.tui.theme import ThemeManager
@@ -66,3 +69,37 @@ class BaseApp(App[None]):
             wizard.remove_class("maximized")
         else:
             wizard.add_class("maximized")
+
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """Override standard textual commands for the command palette.
+
+        Removes default theme/screenshot/maximize commands and adds skip.
+        """
+        yield SystemCommand(
+            "Quit",
+            "Quit the application as soon as possible",
+            self.action_quit,
+        )
+
+        if screen.query("HelpPanel"):
+            yield SystemCommand(
+                "Keys",
+                "Hide the keys and widget help panel",
+                self.action_hide_help_panel,
+            )
+        else:
+            yield SystemCommand(
+                "Keys",
+                "Show help for the focused widget and a summary of available keys",
+                self.action_show_help_panel,
+            )
+
+        yield SystemCommand(
+            "Skip",
+            "Skip the current step",
+            self.action_skip,
+        )
+
+    def action_skip(self) -> None:
+        """Skip the current step. Override in subclass if supported."""
+        pass
