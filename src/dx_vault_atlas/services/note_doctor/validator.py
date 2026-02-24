@@ -338,6 +338,10 @@ class NoteDoctorValidator:
                 f"Pydantic errors | {file_path.name}: {_format_pydantic_errors(e)}"
             )
             for error in e.errors():
+                # Skip "extra_forbidden" errors — extraneous fields are
+                # handled by the fixer's check_and_fix_extraneous step.
+                if error["type"] == "extra_forbidden":
+                    continue
                 loc = error["loc"]
                 field = str(loc[0]) if loc else "unknown"
                 if field not in invalid and field not in missing:

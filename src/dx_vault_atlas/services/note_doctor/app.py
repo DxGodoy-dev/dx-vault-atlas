@@ -215,9 +215,8 @@ class DoctorApp:
             # Re-validate in memory before writing to disk
             fixed_result = self.validator.validate_content(note_path, fm_final, body)
 
-            self._write_note(note_path, fm_final, body)
-
             if fixed_result.is_valid:
+                self._write_note(note_path, fm_final, body)
                 return self._tag_valid(fixed_result, note_path)
             result = fixed_result
 
