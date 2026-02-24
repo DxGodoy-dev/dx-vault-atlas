@@ -55,8 +55,8 @@ class RefNote(BaseNote):
 class RankedNote(BaseNote):
     """Notes with source and priority fields."""
 
-    source: NoteSource | str = Field(default=NoteSource.OTHER)
-    priority: Priority = Field(default=Priority.LOW)
+    source: NoteSource | str
+    priority: Priority
 
 
 class InfoNote(RankedNote):
@@ -71,10 +71,7 @@ class WorkflowNote(InfoNote):
 
     # Override with Enum for workflow notes
     status: NoteStatus = Field(default=NoteStatus.TO_DO)
-    area: NoteArea = Field(
-        default=NoteArea.PERSONAL,
-        description="Note category (Personal or Work)",
-    )
+    area: NoteArea = Field(description="Note category (Personal or Work)")
 
 
 class ProjectNote(WorkflowNote):

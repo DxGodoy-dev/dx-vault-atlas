@@ -104,7 +104,6 @@ class NoteFixer:
         has_changes |= self._fix_status(updated)
         has_changes |= self._fix_area(updated)
         has_changes |= self._fix_aliases_tags(updated)
-        has_changes |= self._fix_source_default(updated)
         has_changes |= self._fix_task_project_defaults(updated)
 
         if has_changes:
@@ -141,6 +140,33 @@ class NoteFixer:
 
         if has_changes:
             return False, updated
+        return True, frontmatter
+
+    def check_and_fix_extraneous(
+        self,
+        frontmatter: dict[str, Any],
+    ) -> tuple[bool, dict[str, Any]]:
+        """Remove fields that are not supported by the note's Pydantic model
+        if the model forbids extra fields.
+        """
+        updated = frontmatter.copy()
+
+        note_type = updated.get("type")
+        if not note_type or not isinstance(note_type, str):
+            return True, frontmatter
+
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return True, frontmatter
+
+        # Only remove extras if the model explicitly forbids them
+        if getattr(model_cls, "model_config", {}).get("extra") == "forbid":
+            from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
+            clean_data = strip_unknown_fields(model_cls, updated)
+            if clean_data != updated:
+                return False, clean_data
+
         return True, frontmatter
 
     @staticmethod
@@ -190,6 +216,10 @@ class NoteFixer:
             total_changes = True
 
         unchanged, current = self.check_and_fix_defaults(current)
+        if not unchanged:
+            total_changes = True
+
+        unchanged, current = self.check_and_fix_extraneous(current)
         if not unchanged:
             total_changes = True
 
@@ -337,14 +367,6 @@ class NoteFixer:
             changed = True
 
         return changed
-
-    @staticmethod
-    def _fix_source_default(updated: dict[str, Any]) -> bool:
-        """Default source to 'me' if missing/empty."""
-        if "source" not in updated or not updated["source"]:
-            updated["source"] = "me"
-            return True
-        return False
 
     @staticmethod
     def _fix_task_project_defaults(

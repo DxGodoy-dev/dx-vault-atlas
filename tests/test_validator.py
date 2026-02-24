@@ -137,8 +137,27 @@ version: "1.0"
         assert result.is_valid
         # Should have warning
         assert any("unknown_source" in w for w in result.warnings)
-        # Should have warning
         assert any("unknown_source" in w for w in result.warnings)
+
+    def test_validate_extraneous_source_ignored(
+        self, validator: NoteDoctorValidator, tmp_path: Path
+    ) -> None:
+        """Should ignore extra fields like 'source' for notes that don't support them."""
+        path = tmp_path / "ref_with_source.md"
+        content = """---
+title: "Ref With Source"
+aliases: ["Ref With Source"]
+type: ref
+source: "me"
+---
+"""
+        path.write_text(content, encoding="utf-8")
+        result = validator.validate(path)
+
+        assert result.is_valid
+        assert "source" not in result.invalid_fields
+        # Source should be completely ignored for 'ref'
+        assert not result.warnings
 
     def test_validate_nonexistent_file(
         self, validator: NoteDoctorValidator, tmp_path: Path

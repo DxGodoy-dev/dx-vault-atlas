@@ -4,6 +4,7 @@ from dx_vault_atlas.services.note_creator.core.factory import NoteFactory
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
     NoteSource,
+    NoteStatus,
     NoteTemplate,
     Priority,
 )
@@ -33,7 +34,7 @@ class TestNoteFactory:
         assert note.note_type == "info"
         assert note.source == NoteSource.ME.value
         assert note.priority == Priority.MEDIUM.value
-        assert note.status == "to read"
+        assert note.status == NoteStatus.TO_READ.value
 
     def test_create_project_note(self) -> None:
         """Should create ProjectNote for PROJECT template."""
@@ -49,7 +50,7 @@ class TestNoteFactory:
 
         assert isinstance(note, ProjectNote)
         assert note.area == NoteArea.WORK.value
-        assert note.status == "to do"
+        assert note.status == NoteStatus.TO_DO.value
 
     def test_handles_string_template_fallback(self) -> None:
         """Should handle string template gracefully."""

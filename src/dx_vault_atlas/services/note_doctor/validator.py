@@ -103,37 +103,6 @@ class ValidationResult:
 class NoteDoctorValidator:
     """Validates notes using Pydantic models and enum checks."""
 
-    REQUIRED_FIELDS: dict[str, list[str]] = {
-        "moc": ["title", "aliases", "type"],
-        "info": [
-            "title",
-            "aliases",
-            "type",
-            "source",
-            "priority",
-            "status",
-        ],
-        "ref": ["title", "aliases", "type"],
-        "task": [
-            "title",
-            "aliases",
-            "type",
-            "source",
-            "priority",
-            "area",
-            "status",
-        ],
-        "project": [
-            "title",
-            "aliases",
-            "type",
-            "source",
-            "priority",
-            "area",
-            "status",
-        ],
-    }
-
     def __init__(self) -> None:
         """Initialise the validator with a YAML parser."""
         self.yaml_parser = YamlParserService()
@@ -235,9 +204,18 @@ class NoteDoctorValidator:
         note_type: str,
         frontmatter: dict[str, Any],
     ) -> list[str]:
-        """Return list of missing required fields."""
-        required = self.REQUIRED_FIELDS.get(note_type, [])
-        return [f for f in required if f not in frontmatter]
+        """Return list of missing required fields based on Pydantic models."""
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return []
+
+        missing = []
+        for name, field_info in model_cls.model_fields.items():
+            if field_info.is_required():
+                key = field_info.alias if field_info.alias else name
+                if key not in frontmatter:
+                    missing.append(key)
+        return missing
 
     def _check_integrity(
         self,
@@ -340,8 +318,12 @@ class NoteDoctorValidator:
         missing: list[str],
     ) -> None:
         """Run Pydantic model validation, appending new issues."""
+        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
         try:
-            model_cls(**frontmatter)
+            # Only pass fields the model knows about
+            filtered = strip_unknown_fields(model_cls, frontmatter)
+            model_cls(**filtered)
         except ValidationError as e:
             logger.debug(
                 f"Pydantic errors | {file_path.name}: {_format_pydantic_errors(e)}"

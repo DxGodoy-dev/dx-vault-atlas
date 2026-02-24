@@ -127,13 +127,9 @@ class TransformationService:
         ):
             return False
 
-        clean_data = {}
-        for field_name, field_info in model_cls.model_fields.items():
-            key = field_info.alias or field_name
-            if key in data:
-                clean_data[key] = data[key]
-            elif field_name in data:
-                clean_data[field_name] = data[field_name]
+        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
+        clean_data = strip_unknown_fields(model_cls, data)
 
         if "type" not in clean_data and "note_type" not in clean_data:
             clean_data["type"] = note_type
