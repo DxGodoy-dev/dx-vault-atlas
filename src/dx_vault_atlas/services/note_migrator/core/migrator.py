@@ -3,12 +3,6 @@
 from pathlib import Path
 
 
-from dx_vault_atlas.services.note_creator.models.enums import (
-    NoteArea,
-    NoteSource,
-    NoteStatus,
-    Priority,
-)
 from dx_vault_atlas.shared.config import get_settings
 from dx_vault_atlas.services.note_migrator.core.errors import (
     EditorCancelledError,
@@ -51,15 +45,6 @@ class NoteMigrator:
         "info": ["title", "aliases", "type", "source", "priority"],
         "task": ["title", "aliases", "type", "source", "priority", "area"],
         "project": ["title", "aliases", "type", "source", "priority", "area"],
-    }
-
-    # Default values for fields that note_creator provides defaults for
-    DEFAULT_VALUES: dict[str, str | int | list[str]] = {
-        "source": NoteSource.OTHER.value,
-        "priority": Priority.LOW.value,
-        "area": NoteArea.PERSONAL.value,
-        "status": NoteStatus.TO_DO.value,
-        "tags": [],
     }
 
     def __init__(self, editor: str = "vim") -> None:
@@ -135,9 +120,8 @@ class NoteMigrator:
         if final_missing:
             raise MissingFieldsError(note_path, final_missing)
 
-        # Apply defaults and write
-        final_dict = self._apply_defaults(frontmatter.model_dump())
-        self._write_migrated_note(note_path, final_dict, parsed.body)
+        # Write migrated note (schema_upgrader handles field cleanup)
+        self._write_migrated_note(note_path, frontmatter.model_dump(), parsed.body)
 
         return MigrationResult(
             file_path=note_path,
@@ -171,18 +155,6 @@ class NoteMigrator:
             missing.insert(0, "title")
 
         return missing
-
-    def _apply_defaults(
-        self, frontmatter: dict[str, str | int | list[str] | None]
-    ) -> dict[str, str | int | list[str] | None]:
-        """Apply default values for optional fields."""
-        result = dict(frontmatter)
-
-        for field, default in self.DEFAULT_VALUES.items():
-            if field not in result:
-                result[field] = default
-
-        return result
 
     def _write_migrated_note(
         self,
