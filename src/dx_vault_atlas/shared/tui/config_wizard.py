@@ -11,6 +11,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from dx_vault_atlas.shared.config import GlobalConfig
+from dx_vault_atlas.shared.paths import validate_directory
 
 console = Console()
 
@@ -25,12 +26,9 @@ def _validate_directory(path_str: str) -> Path | None:
         Resolved Path if valid, None otherwise.
     """
     try:
-        path = Path(path_str).expanduser().resolve()
-        if path.exists() and path.is_dir():
-            return path
-    except (OSError, ValueError):
-        pass
-    return None
+        return validate_directory(path_str)
+    except ValueError:
+        return None
 
 
 def _prompt_directory(prompt_text: str, default: str | None = None) -> Path:

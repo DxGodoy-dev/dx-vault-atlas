@@ -9,6 +9,21 @@ class DateResolver:
     """Resolves the creation date of a note based on a hierarchy of sources."""
 
     @staticmethod
+    def extract_timestamp_from_stem(stem: str) -> str | None:
+        """Extract a valid timestamp string (12 or 14 digits) from the start of a filename."""
+        if not stem[:8].isdigit():
+            return None
+
+        # Try 14 chars (YYYYMMDDHHMMSS)
+        if len(stem) >= 14 and stem[:14].isdigit():
+            return stem[:14]
+        # Try 12 chars (YYYYMMDDHHMM)
+        if len(stem) >= 12 and stem[:12].isdigit():
+            return stem[:12]
+
+        return None
+
+    @staticmethod
     def resolve_created(
         file_path: Path, frontmatter: dict[str, Any]
     ) -> datetime | None:
@@ -18,45 +33,25 @@ class DateResolver:
         1. Timestamp in filename (YYYYMMDDHHMM or YYYYMMDDHHmmss).
         2. NO metadata fallback.
         3. NO frontmatter fallback (we are verifying the frontmatter invalidity).
-           Actually, if frontmatter has valid date, we use it?
-           No, the goal is to Fix *missing* or *invalid* dates.
-           If frontmatter has a valid date, we keep it (Fixer logic does that: if current != true_created).
-           Wait, Fixer calls this to find "true_created".
-           If "true_created" is purely from filename, then any note without timestamp in filename will have None.
-           Then Fixer will set created=None.
-           This matches the plan: "Derived ONLY from filename".
 
         Returns:
             datetime or None if not found/invalid/future.
         """
-        # 1. Filename timestamp
-        stem = file_path.stem
-        # print(f"DEBUG: Resolving date for {stem}")
-        # Try to parse timestamp from start of filename
-        candidates = []
-        if stem[:8].isdigit():
-            # Try 14 chars (YYYYMMDDHHMMSS)
-            if len(stem) >= 14 and stem[:14].isdigit():
-                candidates.append(stem[:14])
-            # Try 12 chars (YYYYMMDDHHMM)
-            if len(stem) >= 12 and stem[:12].isdigit():
-                candidates.append(stem[:12])
+        cand = DateResolver.extract_timestamp_from_stem(file_path.stem)
+        if not cand:
+            return None
 
         now = datetime.now()
 
-        for cand in candidates:
-            try:
-                fmt = "%Y%m%d%H%M%S" if len(cand) == 14 else "%Y%m%d%H%M"
-                dt = datetime.strptime(cand, fmt)
-                # Future check
-                if dt > now:
-                    return None
-                return dt
-            except ValueError:
-                continue
-
-        # Derived ONLY from filename.
-        return None
+        try:
+            fmt = "%Y%m%d%H%M%S" if len(cand) == 14 else "%Y%m%d%H%M"
+            dt = datetime.strptime(cand, fmt)
+            # Future check
+            if dt > now:
+                return None
+            return dt
+        except ValueError:
+            return None
 
     @staticmethod
     def resolve_updated(

@@ -1,7 +1,9 @@
 """Pydantic models for Obsidian notes."""
 
 from datetime import datetime
+
 from pydantic import BaseModel, Field, field_validator
+
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
@@ -59,14 +61,20 @@ class RankedNote(BaseNote):
     priority: Priority
 
 
-class InfoNote(RankedNote):
+class StatusNote(RankedNote):
+    """Base note for status-tracking."""
+
+    status: NoteStatus
+
+
+class InfoNote(StatusNote):
     """Information note with status."""
 
     # User requested default "To Read" and implied no enum selection needed
     status: NoteStatus = Field(default=NoteStatus.TO_READ)
 
 
-class WorkflowNote(InfoNote):
+class WorkflowNote(StatusNote):
     """Notes with status and area fields."""
 
     # Override with Enum for workflow notes

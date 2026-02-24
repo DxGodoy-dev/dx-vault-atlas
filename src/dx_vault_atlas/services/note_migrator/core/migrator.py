@@ -39,25 +39,34 @@ class NoteMigrator:
     validation, and writing the migrated note.
     """
 
-    # Required fields per note type (matching note_creator behavior)
-    REQUIRED_FIELDS: dict[str, list[str]] = {
-        "moc": ["title", "aliases", "type"],
-        "info": ["title", "aliases", "type", "source", "priority"],
-        "task": ["title", "aliases", "type", "source", "priority", "area"],
-        "project": ["title", "aliases", "type", "source", "priority", "area"],
-    }
+    # Empty fields, schema enforced dynamically.
 
-    def __init__(self, editor: str = "vim") -> None:
+    def __init__(
+        self,
+        editor: str = "vim",
+        yaml_parser: YamlParserService | None = None,
+        editor_service: EditorBufferService | None = None,
+        heuristics: TypeHeuristics | None = None,
+        schema_upgrader: SchemaUpgrader | None = None,
+        transformation_service: TransformationService | None = None,
+    ) -> None:
         """Initialize migrator with services.
 
         Args:
             editor: System editor command for manual input.
+            yaml_parser: Optional injected service.
+            editor_service: Optional injected service.
+            heuristics: Optional injected service.
+            schema_upgrader: Optional injected service.
+            transformation_service: Optional injected service.
         """
-        self.yaml_parser = YamlParserService()
-        self.editor_service = EditorBufferService(editor=editor)
-        self.heuristics = TypeHeuristics()
-        self.schema_upgrader = SchemaUpgrader()
-        self.transformation_service = TransformationService(settings=get_settings())
+        self.yaml_parser = yaml_parser or YamlParserService()
+        self.editor_service = editor_service or EditorBufferService(editor=editor)
+        self.heuristics = heuristics or TypeHeuristics()
+        self.schema_upgrader = schema_upgrader or SchemaUpgrader()
+        self.transformation_service = transformation_service or TransformationService(
+            settings=get_settings()
+        )
 
     def migrate(self, note_path: Path) -> MigrationResult:
         """Migrate a single note file.
@@ -76,7 +85,7 @@ class NoteMigrator:
         """
         try:
             content = note_path.read_text(encoding="utf-8")
-        except OSError as e:
+        except (OSError, UnicodeDecodeError) as e:
             raise FileReadError(note_path, f"Cannot read file: {e}") from e
 
         # Parse YAML
@@ -139,7 +148,15 @@ class NoteMigrator:
         if not note_type:
             return ["type"] if "type" not in frontmatter else []
 
-        required = self.REQUIRED_FIELDS.get(note_type, ["title", "aliases", "type"])
+        from dx_vault_atlas.services.note_migrator.validator import MODEL_MAP
+
+        required = ["title", "type"]
+        if model_cls := MODEL_MAP.get(note_type):
+            required = [
+                field.alias or name
+                for name, field in model_cls.model_fields.items()
+                if field.is_required()
+            ]
         missing = []
 
         for field in required:

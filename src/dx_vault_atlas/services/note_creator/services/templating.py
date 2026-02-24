@@ -19,7 +19,7 @@ class TemplatingService:
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        # self.env.filters["format_date"] = self._format_date_filter
+        self.env.filters["format_date"] = self._format_date_filter
 
     def _format_date_filter(self, value: str, fmt: str = "%Y-%m-%d") -> str:
         """Convert Pydantic ISO string to formatted date.

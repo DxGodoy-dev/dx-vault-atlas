@@ -147,6 +147,7 @@ class NoteFixer:
         frontmatter: dict[str, Any],
     ) -> tuple[bool, dict[str, Any]]:
         """Remove fields that are not supported by the note's Pydantic model
+
         if the model forbids extra fields.
         """
         updated = frontmatter.copy()
@@ -188,20 +189,14 @@ class NoteFixer:
     def fix(
         self,
         file_path: Path,
+        current: dict[str, Any],
+        body: str,
     ) -> tuple[bool, dict[str, Any], str]:
-        """Orchestrate all fixes for a note file.
+        """Orchestrate all fixes for a note file in memory.
 
         Returns:
             (has_changes, fixed_frontmatter, body)
         """
-        try:
-            content = file_path.read_text("utf-8")
-            parsed = self.parser.parse(content)
-            current = parsed.frontmatter.copy()
-            body = parsed.body
-        except Exception:
-            return False, {}, ""
-
         total_changes = False
 
         unchanged, current = self.check_and_fix_dates(
@@ -288,7 +283,7 @@ class NoteFixer:
     @staticmethod
     def _fix_type(updated: dict[str, Any]) -> bool:
         """Normalise note type or default to 'note'."""
-        known = {"project", "task", "info", "moc", "ref", "note"}
+        known = set(MODEL_MAP.keys()) | {"note"}
 
         if "type" in updated and isinstance(updated["type"], str):
             val = updated["type"].strip().lower()

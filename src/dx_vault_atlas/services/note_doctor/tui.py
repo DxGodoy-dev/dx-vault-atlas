@@ -105,8 +105,13 @@ class DoctorTUI:
         title_in_fm = result.frontmatter.get("title")
         if "title" in missing or not title_in_fm:
             default_title = result.file_path.stem
-            if default_title[:8].isdigit() and len(default_title) > 13:
-                default_title = default_title[13:].strip(" -_")
+            from dx_vault_atlas.services.note_doctor.core.date_resolver import (
+                DateResolver,
+            )
+
+            ts = DateResolver.extract_timestamp_from_stem(default_title)
+            if ts:
+                default_title = default_title[len(ts) :].strip(" -_")
             steps.append(replace(TITLE_STEP, default_value=default_title))
 
         # 1. Type

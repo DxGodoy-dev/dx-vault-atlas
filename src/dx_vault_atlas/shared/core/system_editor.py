@@ -5,6 +5,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+IS_WINDOWS = os.name == "nt"
+
 
 class SystemEditor:
     """Handles interaction with system text editors."""
@@ -23,7 +25,7 @@ class SystemEditor:
         path_str = str(file_path)
 
         # Determine default editor based on OS
-        default_editor = "notepad" if os.name == "nt" else "vim"
+        default_editor = "notepad" if IS_WINDOWS else "vim"
 
         # Resolve command: explicit -> env var -> fallback
         cmd_str: str = (
@@ -33,7 +35,7 @@ class SystemEditor:
             or default_editor
         )
 
-        parts = shlex.split(cmd_str, posix=(os.name != "nt"))
+        parts = shlex.split(cmd_str, posix=not IS_WINDOWS)
         if not parts:
             parts = [default_editor]
 
@@ -41,10 +43,10 @@ class SystemEditor:
 
         try:
             # Use check_call to wait for editor to close
-            subprocess.check_call(cmd, shell=(os.name == "nt"))
+            subprocess.check_call(cmd, shell=IS_WINDOWS)
         except (FileNotFoundError, subprocess.CalledProcessError):
             # Fallback: try system default on Windows
-            if os.name == "nt":
+            if IS_WINDOWS:
                 try:
                     os.startfile(path_str)  # type: ignore[attr-defined]
                     return

@@ -4,6 +4,8 @@ import re
 import unicodedata
 from datetime import datetime
 
+_NON_ALPHANUM_RE = re.compile(r"[^a-z0-9]+")
+
 
 class TitleNormalizer:
     """Transforms raw strings into standardized Obsidian filenames."""
@@ -49,7 +51,7 @@ class TitleNormalizer:
 
         # 2. Lowercase and remove non-alphanumeric characters
         text = text.lower()
-        text = re.sub(r"[^a-z0-9]+", "_", text)
+        text = _NON_ALPHANUM_RE.sub("_", text)
 
         # 3. Trim edges
         return text.strip("_")

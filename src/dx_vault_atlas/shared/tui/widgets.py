@@ -58,12 +58,11 @@ def create_enum_options[E: Enum](
     Returns:
         Tuple of (options list, default index).
     """
+    from dx_vault_atlas.shared.console import format_enum_label
+
     options = []
     for i, member in enumerate(enum_cls):
-        if isinstance(member.value, str):
-            display = member.value.replace(".md", "").title()
-        else:
-            display = f"{member.name.title()} ({member.value})"
+        display, _ = format_enum_label(member, is_default=(i == default_idx))
         if i == default_idx:
             display = f"{display} [dim](default)[/]"
         options.append(Option(Text.from_markup(display), id=f"{id_prefix}-{i}"))

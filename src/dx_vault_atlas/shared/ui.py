@@ -1,7 +1,7 @@
 """UI utilities - re-exports from console module for backwards compatibility."""
 
 from dx_vault_atlas.shared.console import (
-    UserQuit,
+    UserQuitError,
     choose_enum,
     confirm,
     console,
@@ -15,7 +15,7 @@ from dx_vault_atlas.shared.console import (
 )
 
 __all__ = [
-    "UserQuit",
+    "UserQuitError",
     "choose_enum",
     "confirm",
     "console",

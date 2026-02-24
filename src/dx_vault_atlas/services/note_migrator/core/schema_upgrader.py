@@ -26,9 +26,7 @@ class SchemaUpgrader:
         )
         target_version = parse_version(SCHEMA_VERSION)
 
-        should_update = False
-        if not current_version or current_version < target_version:
-            should_update = True
+        should_update = not current_version or current_version < target_version
 
         if should_update:
             frontmatter["version"] = SCHEMA_VERSION

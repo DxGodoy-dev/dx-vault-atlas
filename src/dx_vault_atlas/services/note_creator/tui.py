@@ -3,7 +3,8 @@
 from typing import Any
 
 from dx_vault_atlas.shared.config import GlobalConfig
-from dx_vault_atlas.shared.tui import NOTE_CREATOR_STEPS, WizardConfig, run_wizard
+from dx_vault_atlas.shared.tui import WizardConfig, run_wizard
+from dx_vault_atlas.services.note_creator.tui_steps import NOTE_CREATOR_STEPS
 
 
 def run_tui(settings: GlobalConfig) -> dict[str, Any] | None:

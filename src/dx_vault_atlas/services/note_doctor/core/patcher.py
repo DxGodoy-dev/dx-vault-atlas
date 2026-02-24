@@ -50,7 +50,7 @@ class FrontmatterPatcher:
 
             if target_key == "title":
                 # Special handling for title
-                frontmatter["title"] = f'"{value}"'
+                frontmatter["title"] = value
                 # Ensure alias exists
                 current_aliases = frontmatter.get("aliases", [])
 

@@ -1,10 +1,8 @@
 """Note Creator application orchestrator."""
 
-import sys
 import tempfile
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
 
 from dx_vault_atlas.services.note_creator.core.factory import NoteFactory
 from dx_vault_atlas.services.note_creator.core.processor import NoteProcessor
@@ -81,8 +79,19 @@ class NoteCreatorApp:
                 note_path = output_path
             except Exception as e:
                 logger.exception(f"Error creating note: {e}")
-                # In case of error, we might want to break or continue.
-                # main.py broke the loop on error.
+
+                # Show error to user via console
+                from dx_vault_atlas.services.note_creator.services.console import (
+                    console,
+                )
+
+                console.print(f"[bold red]Error creating note:[/bold red] {e}")
+
+                # Give user a chance to read the error before returning
+                from rich.prompt import Prompt
+
+                Prompt.ask("\n[dim]Press Enter to return to main menu...[/dim]")
+
                 return
 
             # 4. Result TUI

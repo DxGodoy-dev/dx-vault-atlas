@@ -6,28 +6,10 @@ from typing import Any
 from packaging.version import parse as parse_version
 
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
-from dx_vault_atlas.services.note_creator.models.note import (
-    BaseNote,
-    InfoNote,
-    MocNote,
-    ProjectNote,
-    RefNote,
-    TaskNote,
-)
+from dx_vault_atlas.services.note_migrator.validator import MODEL_MAP
 from dx_vault_atlas.shared.config import GlobalConfig
-
-
-# Model mapping for migration
-MODEL_MAP: dict[str, type[BaseNote]] = {
-    "project": ProjectNote,
-    "task": TaskNote,
-    "info": InfoNote,
-    "moc": MocNote,
-    "ref": RefNote,
-}
-
-
 from dx_vault_atlas.shared.logger import logger
+from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
 
 class TransformationService:
@@ -126,8 +108,6 @@ class TransformationService:
             and (model_cls := MODEL_MAP.get(note_type))
         ):
             return False
-
-        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
         clean_data = strip_unknown_fields(model_cls, data)
 

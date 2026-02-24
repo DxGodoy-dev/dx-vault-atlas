@@ -29,6 +29,7 @@ from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
     YamlParserService,
 )
 from dx_vault_atlas.shared.logger import logger
+from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -115,7 +116,12 @@ class NoteDoctorValidator:
         if isinstance(result, ValidationResult):
             return result
         frontmatter, body = result
+        return self.validate_content(file_path, frontmatter, body)
 
+    def validate_content(
+        self, file_path: Path, frontmatter: dict[str, Any], body: str
+    ) -> ValidationResult:
+        """Validate a note in-memory against schema and business rules."""
         note_type = frontmatter.get("type")
         if not note_type or not isinstance(note_type, str):
             return ValidationResult(
@@ -233,7 +239,12 @@ class NoteDoctorValidator:
             if norm_title != norm_fname:
                 invalid.append("integrity_filename")
 
-        if title and aliases and isinstance(aliases, list) and title not in aliases:
+        if (
+            title
+            and aliases
+            and isinstance(aliases, (list, tuple))
+            and title not in aliases
+        ):
             invalid.append("integrity_aliases")
 
         return invalid
@@ -318,8 +329,6 @@ class NoteDoctorValidator:
         missing: list[str],
     ) -> None:
         """Run Pydantic model validation, appending new issues."""
-        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
-
         try:
             # Only pass fields the model knows about
             filtered = strip_unknown_fields(model_cls, frontmatter)

@@ -58,23 +58,23 @@ class NoteFactory:
                 template_enum = NoteTemplate(raw_template)
             except ValueError:
                 # Fallback if it's not a direct value match
-                # logic in main.py: note_class = MODEL_MAP.get(template, BaseNote) if isinstance(template, NoteTemplate)...
-                # If it's a string, main.py defaulted to BaseNote.
+                # logic in main.py defaults to BaseNote if string
                 # We will try to be robust.
                 template_enum = None  # type: ignore
         else:
             template_enum = None  # type: ignore
 
-        # Logic from main.py:
-        # "type": Path(str(template)).stem if isinstance(template, str) else Path(template.value).stem
+        # Logic from main.py: Path(str(template)).stem
         type_str = (
             Path(str(raw_template)).stem
             if isinstance(raw_template, str)
             else Path(raw_template.value).stem
         )
 
+        escaped_title = title.replace('"', '\\"')
+
         note_data: dict[str, Any] = {
-            "title": f'"{title}"',
+            "title": f'"{escaped_title}"',
             "aliases": [title],
             "tags": DEFAULT_TAGS,
             "type": type_str,

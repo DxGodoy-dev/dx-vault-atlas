@@ -182,6 +182,10 @@ class DoctorApp:
 
         result = self.validator.validate(note_path)
 
+        if result.error:
+            # File unreadable or gross YAML error - can't auto-fix
+            return result
+
         if debug_mode and not result.is_valid:
             logger.debug(
                 f"Invalid | {note_path.name}"
@@ -189,7 +193,11 @@ class DoctorApp:
                 f" | invalid={result.invalid_fields}"
             )
 
-        has_changes, fm_final, body = self.fixer.fix(note_path)
+        has_changes, fm_final, body = self.fixer.fix(
+            note_path,
+            result.frontmatter.copy(),
+            result.body,
+        )
 
         # Apply config-driven mappings
         if self._apply_field_mappings(fm_final):
@@ -203,10 +211,15 @@ class DoctorApp:
         if has_changes:
             if debug_mode:
                 logger.debug(f"Auto-fixing | {note_path.name}")
+
+            # Re-validate in memory before writing to disk
+            fixed_result = self.validator.validate_content(note_path, fm_final, body)
+
             self._write_note(note_path, fm_final, body)
-            result = self.validator.validate(note_path)
-            if result.is_valid:
-                return self._tag_valid(result, note_path)
+
+            if fixed_result.is_valid:
+                return self._tag_valid(fixed_result, note_path)
+            result = fixed_result
 
         if self._is_only_version_issue(result):
             return "version"
@@ -412,8 +425,19 @@ class DoctorApp:
             return None
 
         stem = result.file_path.stem
-        ts_match = re.match(r"^(\d{12,14})[_-]", stem)
-        prefix = ts_match.group(0) if ts_match else ""
+        from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
+
+        ts_match = DateResolver.extract_timestamp_from_stem(stem)
+
+        # Determine prefix and clean stem
+        if ts_match:
+            # Check if there is a separator directly after the timestamp
+            separator_len = 0
+            if len(stem) > len(ts_match) and stem[len(ts_match)] in ("_", "-"):
+                separator_len = 1
+            prefix = stem[: len(ts_match) + separator_len]
+        else:
+            prefix = ""
 
         norm_title = TitleNormalizer.sanitize(title)
         new_name = f"{prefix}{norm_title}{result.file_path.suffix}"

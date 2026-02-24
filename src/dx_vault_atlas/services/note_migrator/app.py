@@ -30,12 +30,18 @@ class MigratorApp:
     - Enforce field ordering
     """
 
-    def __init__(self, settings: GlobalConfig) -> None:
+    def __init__(
+        self,
+        settings: GlobalConfig,
+        scanner: VaultScanner | None = None,
+        yaml_parser: YamlParserService | None = None,
+        transformer: TransformationService | None = None,
+    ) -> None:
         """Initialize with dependencies."""
         self.settings = settings
-        self.scanner = VaultScanner()
-        self.yaml_parser = YamlParserService()
-        self.transformer = TransformationService(settings)
+        self.scanner = scanner or VaultScanner()
+        self.yaml_parser = yaml_parser or YamlParserService()
+        self.transformer = transformer or TransformationService(settings)
 
     def run(self, rename_only: bool = False, debug_mode: bool = False) -> None:
         """Execute the migration workflow.

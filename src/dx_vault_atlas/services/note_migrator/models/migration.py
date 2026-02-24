@@ -57,9 +57,14 @@ class MigrationSession(BaseModel):
     @property
     def summary(self) -> str:
         """Generate human-readable summary of migration results."""
-        s = len(self.successful)
-        k = len(self.skipped)
-        f = len(self.failed)
+        s, k, f = 0, 0, 0
+        for r in self.results:
+            if r.status == MigrationStatus.SUCCESS:
+                s += 1
+            elif r.status == MigrationStatus.SKIPPED:
+                k += 1
+            elif r.status == MigrationStatus.FAILED:
+                f += 1
         return f"✓ {s} success | ⊘ {k} skipped | ✗ {f} failed"
 
     def update_result(self, file_path: Path, new_result: MigrationResult) -> None:

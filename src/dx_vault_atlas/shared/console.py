@@ -30,7 +30,7 @@ class UserQuitError(Exception):
     """Raised when user quits with q or Ctrl+Q."""
 
 
-def _format_enum_label(member: Enum, is_default: bool = False) -> tuple[str, bool]:
+def format_enum_label(member: Enum, is_default: bool = False) -> tuple[str, bool]:
     """Format enum member for display with optional default marker.
 
     Args:
@@ -101,25 +101,26 @@ def query(prompt_text: str, default: str = "", allow_empty: bool = False) -> str
         UserQuitError: If user presses Ctrl+Q.
         KeyboardInterrupt: If user presses Ctrl+C.
     """
-    result = questionary.text(
-        prompt_text,
-        default=default,
-        qmark="●",
-        style=MENU_STYLE,
-    ).ask()
+    while True:
+        result = questionary.text(
+            prompt_text,
+            default=default,
+            qmark="●",
+            style=MENU_STYLE,
+        ).ask()
 
-    if result is None:
-        raise KeyboardInterrupt
+        if result is None:
+            raise KeyboardInterrupt
 
-    # Check for quit command
-    if result.strip().lower() == "q":
-        raise UserQuitError()
+        # Check for quit command
+        if result.strip().lower() == "q":
+            raise UserQuitError()
 
-    if not allow_empty and not result.strip():
-        warning_message("Input cannot be empty.")
-        return query(prompt_text, default=default, allow_empty=allow_empty)
+        if not allow_empty and not result.strip():
+            warning_message("Input cannot be empty.")
+            continue
 
-    return result.strip()
+        return result.strip()
 
 
 def choose_enum[E: Enum](
@@ -148,7 +149,7 @@ def choose_enum[E: Enum](
     choices = []
     for i, m in enumerate(members):
         is_default = i == default_index
-        display, _ = _format_enum_label(m, is_default)
+        display, _ = format_enum_label(m, is_default)
         if is_default:
             display = f"{display} [dim](default)[/dim]"
         choices.append(Choice(title=display, value=m))

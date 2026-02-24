@@ -17,6 +17,7 @@ from pydantic import Field, field_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dx_vault_atlas.shared.logger import logger
+from dx_vault_atlas.shared.paths import APP_NAME, validate_directory
 
 
 class ConfigNotFoundError(Exception):
@@ -67,7 +68,7 @@ class GlobalConfig(BaseSettings):
     @property
     def logs_dir(self) -> Path:
         """Return OS-standard log directory (Computed, not stored)."""
-        return Path(user_log_dir("dx-vault-atlas", ensure_exists=True))
+        return Path(user_log_dir(APP_NAME, ensure_exists=True))
 
     @field_validator("vault_path", "vault_inbox", mode="after")
     @classmethod
@@ -78,16 +79,11 @@ class GlobalConfig(BaseSettings):
         we are in a specific mode (like wizard), but strictly enforcing
         existence here is safer for the runtime.
         """
-        resolved = v.resolve()
-        # Fail Fast (Skill 06) - But allow instantiation if we are going to create it?
-        # Sticking to strict validation for runtime config.
-        if not resolved.exists():
-            # Logging strictly inside validation can be noisy, but useful for debugging
-            logger.debug(f"Path validation failed: {resolved} does not exist.")
-            raise ValueError(f"Path does not exist: {resolved}")
-        if not resolved.is_dir():
-            raise ValueError(f"Path is not a directory: {resolved}")
-        return resolved
+        try:
+            return validate_directory(v)
+        except ValueError as e:
+            logger.debug(f"Path validation failed: {v} - {e}")
+            raise
 
 
 class ConfigManager:
@@ -98,7 +94,7 @@ class ConfigManager:
 
     def __init__(self) -> None:
         """Initialize XDG paths."""
-        self._app_name = "dx-vault-atlas"
+        self._app_name = APP_NAME
         self._config_dir = Path(user_config_dir(self._app_name))
         self._config_path = self._config_dir / "config.json"
 
@@ -172,6 +168,9 @@ class ConfigManager:
 
             logger.info(f"Configuration saved to {self._config_path}")
 
+            # Invalidate the cached settings
+            get_settings.cache_clear()
+
         except OSError as e:
             logger.critical(f"Failed to save configuration: {e}")
             raise
@@ -183,10 +182,12 @@ def get_config_manager() -> ConfigManager:
     return ConfigManager()
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> GlobalConfig:
     """Get the current loaded settings.
 
     Convenience wrapper for usage throughout the app.
+    Caches the settings object. Cleared upon saving via ConfigManager.
 
     Returns:
         GlobalConfig object.

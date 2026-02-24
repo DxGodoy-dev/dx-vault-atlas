@@ -8,6 +8,7 @@ from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
     YamlParseError,
     YamlParserService,
 )
+from dx_vault_atlas.shared.core.system_editor import SystemEditor
 
 
 class EditorAbortedError(Exception):
@@ -93,8 +94,6 @@ class EditorBufferService:
 
     def _open_editor(self, file_path: str) -> None:
         """Open the configured editor and wait for it to close."""
-        from dx_vault_atlas.shared.core.system_editor import SystemEditor
-
         try:
             SystemEditor.open_file(file_path, editor_cmd=self.editor)
         except RuntimeError as e:

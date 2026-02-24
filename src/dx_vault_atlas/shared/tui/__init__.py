@@ -6,7 +6,6 @@ Provides reusable components:
 - VimOptionList: OptionList with j/k navigation
 - StepDone: Completed wizard step display
 - WizardConfig: Wizard configuration
-- NOTE_CREATOR_STEPS: Pre-built steps for note creation
 """
 
 from dx_vault_atlas.shared.tui.app import BaseApp
@@ -18,7 +17,6 @@ from dx_vault_atlas.shared.tui.widgets import (
     create_vim_option_list,
 )
 from dx_vault_atlas.shared.tui.wizard import (
-    NOTE_CREATOR_STEPS,
     WizardConfig,
     WizardStep,
 )
@@ -26,7 +24,6 @@ from dx_vault_atlas.shared.tui.wizard_app import WizardApp, run_wizard
 
 __all__ = [
     "BaseApp",
-    "NOTE_CREATOR_STEPS",
     "SHARED_CSS",
     "StepDone",
     "ThemeManager",

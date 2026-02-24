@@ -105,11 +105,13 @@ class ConfigEditor:
 
     def _update_path(self, config: GlobalConfig, attr: str, prompt: str) -> None:
         """Update a path attribute with validation."""
+        from dx_vault_atlas.shared.paths import validate_directory
+
         current_val = getattr(config, attr)
         new_val = Prompt.ask(prompt, default=str(current_val))
         try:
-            GlobalConfig.validate_path(Path(new_val))
-            setattr(config, attr, Path(new_val))
+            validated = validate_directory(new_val)
+            setattr(config, attr, validated)
         except Exception as e:
             ui.console.print(f"[red]Invalid path: {e}[/red]")
             Prompt.ask("Press Enter to continue")

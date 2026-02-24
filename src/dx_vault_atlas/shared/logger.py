@@ -11,8 +11,9 @@ from pathlib import Path
 
 from platformdirs import user_log_dir
 
+from dx_vault_atlas.shared.paths import APP_NAME
+
 # Constants
-APP_NAME = "dx-vault-atlas"
 # Skill 01: Pathlib usage mandatory
 LOG_DIR = Path(user_log_dir(APP_NAME, ensure_exists=True))
 LOG_FILE = LOG_DIR / "app.log"
