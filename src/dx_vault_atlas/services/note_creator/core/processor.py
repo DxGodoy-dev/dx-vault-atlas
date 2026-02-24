@@ -1,7 +1,5 @@
 """Note processor for rendering and writing notes."""
 
-from pathlib import Path
-
 from dx_vault_atlas.services.note_creator.models.note import BaseNote
 from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 
@@ -17,45 +15,24 @@ class NoteProcessor:
         """
         self.templating = templating_service
 
-    def create_note(
+    def render_note(
         self,
         template_name: str,
         note_data: BaseNote,
-        output_path: Path,
         body_content: str = "",
-    ) -> Path:
-        """Render note and write to disk.
+    ) -> str:
+        """Render note content from template and variables.
 
         Args:
             template_name: Template file name.
             note_data: Validated note data.
-            output_path: Path to write the note.
             body_content: Optional body content to append.
 
         Returns:
-            Path to the created note.
-
-        Raises:
-            FileExistsError: If note already exists at path.
+            The rendered note content as a string.
         """
         content = self.templating.render(template_name, note_data)
         if body_content:
             content = f"{content.strip()}\n\n{body_content.strip()}\n"
 
-        self._write_to_disk(content, output_path)
-        return output_path
-
-    def _write_to_disk(self, content: str, path: Path) -> None:
-        """Write content to disk.
-
-        Args:
-            content: Note content.
-            path: Target path.
-
-        Raises:
-            FileExistsError: If file already exists.
-        """
-        if path.exists():
-            msg = f"Note already exists at: {path}"
-            raise FileExistsError(msg)
-        path.write_text(content, encoding="utf-8")
+        return content

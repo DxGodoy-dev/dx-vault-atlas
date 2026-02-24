@@ -15,7 +15,6 @@ from dx_vault_atlas.services.note_creator.models.enums import (
 )
 from dx_vault_atlas.shared.tui.wizard import WizardStep
 
-
 # Standard steps for note wizard
 TITLE_STEP = WizardStep(
     key="title",

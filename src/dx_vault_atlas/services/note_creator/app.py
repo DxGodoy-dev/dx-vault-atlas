@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dx_vault_atlas.services.note_creator.core.factory import NoteFactory
 from dx_vault_atlas.services.note_creator.core.processor import NoteProcessor
+from dx_vault_atlas.services.note_creator.core.writer import NoteWriter
 from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 from dx_vault_atlas.services.note_creator.tui import run_tui
 from dx_vault_atlas.services.note_creator.utils.title_normalizer import TitleNormalizer
@@ -29,6 +30,7 @@ class NoteCreatorApp:
         self,
         settings: GlobalConfig,
         processor: NoteProcessor,
+        writer: NoteWriter,
         show_header: bool = True,
     ) -> None:
         """Initialize with dependencies.
@@ -36,10 +38,12 @@ class NoteCreatorApp:
         Args:
             settings: Application configuration.
             processor: Note processor service.
+            writer: Service to write notes to disk.
             show_header: Whether to show header panel.
         """
         self.settings = settings
         self.processor = processor
+        self.writer = writer
         self.show_header = show_header
 
     def run(self) -> None:
@@ -68,12 +72,12 @@ class NoteCreatorApp:
                 note_instance = NoteFactory.create_note(wizard_data)
 
                 logger.info(f"Creating note: {safe_title}")
-                self.processor.create_note(
+                rendered_content = self.processor.render_note(
                     template_name=f"{note_instance.note_type}.md",
                     note_data=note_instance,
-                    output_path=output_path,
                     body_content=body_content,
                 )
+                self.writer.write(rendered_content, output_path)
                 logger.info(f"Note created at {output_path}")
 
                 note_path = output_path
@@ -130,4 +134,5 @@ def create_app(settings: GlobalConfig, show_header: bool = True) -> NoteCreatorA
     """
     template_service = TemplatingService()
     processor = NoteProcessor(template_service)
-    return NoteCreatorApp(settings, processor, show_header)
+    writer = NoteWriter()
+    return NoteCreatorApp(settings, processor, writer, show_header)
