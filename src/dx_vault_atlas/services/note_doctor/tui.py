@@ -1,7 +1,7 @@
 from dataclasses import replace
 from typing import Any
 
-from dx_vault_atlas.services.note_doctor.validator import ValidationResult
+from dx_vault_atlas.services.note_doctor.validator import MODEL_MAP, ValidationResult
 from dx_vault_atlas.shared.tui import (
     WizardConfig,
     run_wizard,
@@ -26,6 +26,10 @@ class DoctorTUI:
         invalid.discard("dates")
         invalid.discard("integrity_filename")
         invalid.discard("integrity_aliases")
+
+        # Remove extraneous fields — they should be stripped, not fixed
+        extraneous = self._get_extraneous_fields(result.frontmatter)
+        invalid -= extraneous
 
         # Auto-fill logic for InfoNote status
         # If type is already "info" (in frontmatter) and status is missing,
@@ -163,3 +167,19 @@ class DoctorTUI:
                 final_steps.append(step)
 
         return final_steps
+
+    @staticmethod
+    def _get_extraneous_fields(frontmatter: dict) -> set[str]:
+        """Return field names present in frontmatter but forbidden by the model."""
+        note_type = frontmatter.get("type")
+        if not note_type or not isinstance(note_type, str):
+            return set()
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return set()
+        if getattr(model_cls, "model_config", {}).get("extra") != "forbid":
+            return set()
+        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
+        clean = strip_unknown_fields(model_cls, frontmatter)
+        return set(frontmatter.keys()) - set(clean.keys())

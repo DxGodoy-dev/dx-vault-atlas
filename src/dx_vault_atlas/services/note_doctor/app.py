@@ -391,6 +391,8 @@ class DoctorApp:
                 frontmatter,
                 fixes,
             )
+            # Strip fields not allowed by the note's Pydantic model
+            _, frontmatter = self.fixer.check_and_fix_extraneous(frontmatter)
             self._write_note(file_path, frontmatter, result.body)
             ui.console.print(f"[green]Fixed {file_path.name}[/green]")
 
@@ -529,9 +531,12 @@ class DoctorApp:
         fixes: dict[str, Any],
     ) -> None:
         """Handle non-title field repairs in CLI mode."""
+        extraneous = self._get_extraneous_fields(result.frontmatter)
         issues = (
-            set(result.missing_fields) | set(result.invalid_fields)
-        ) - _SKIP_FIELDS
+            (set(result.missing_fields) | set(result.invalid_fields))
+            - _SKIP_FIELDS
+            - extraneous
+        )
 
         for field in issues:
             if not ui.confirm(
@@ -573,6 +578,22 @@ class DoctorApp:
                 )
             except ValueError:
                 ui.console.print("[red]Please enter a number.[/red]")
+
+    @staticmethod
+    def _get_extraneous_fields(frontmatter: dict[str, Any]) -> set[str]:
+        """Return field names present in frontmatter but forbidden by the model."""
+        note_type = frontmatter.get("type")
+        if not note_type or not isinstance(note_type, str):
+            return set()
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return set()
+        if getattr(model_cls, "model_config", {}).get("extra") != "forbid":
+            return set()
+        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
+        clean = strip_unknown_fields(model_cls, frontmatter)
+        return set(frontmatter.keys()) - set(clean.keys())
 
 
 def create_app(settings: GlobalConfig) -> DoctorApp:
