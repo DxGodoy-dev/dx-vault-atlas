@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from dx_vault_atlas.shared.logger import logger
+
 
 class FrontmatterPatcher:
     """Applies fixes to note frontmatter."""
@@ -41,6 +43,10 @@ class FrontmatterPatcher:
         Returns:
             Modified frontmatter dictionary with canonical ordering.
         """
+        logger.debug(
+            f"[DEBUG TRACE] patcher.apply_fixes Start | fixes={fixes} | 'source' in fm: {'source' in frontmatter}"
+        )
+
         # Iterate over fixes and apply
         for key, value in fixes.items():
             # Map wizard keys to frontmatter keys
@@ -95,4 +101,7 @@ class FrontmatterPatcher:
             if key not in ordered_frontmatter:
                 ordered_frontmatter[key] = value
 
+        logger.debug(
+            f"[DEBUG TRACE] patcher.apply_fixes End | 'source' in ordered_fm: {'source' in ordered_frontmatter}"
+        )
         return ordered_frontmatter

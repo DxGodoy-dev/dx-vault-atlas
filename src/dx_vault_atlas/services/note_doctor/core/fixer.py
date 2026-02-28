@@ -17,6 +17,7 @@ from dx_vault_atlas.services.note_doctor.validator import MODEL_MAP
 from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
     YamlParserService,
 )
+from dx_vault_atlas.shared.logger import logger
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -164,8 +165,14 @@ class NoteFixer:
         if getattr(model_cls, "model_config", {}).get("extra") == "forbid":
             from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
+            logger.debug(
+                f"[DEBUG TRACE] fixer.check_and_fix_extraneous | Stripping unknowns for {model_cls.__name__} | 'source' in updated: {'source' in updated}"
+            )
             clean_data = strip_unknown_fields(model_cls, updated)
             if clean_data != updated:
+                logger.debug(
+                    f"[DEBUG TRACE] fixer.check_and_fix_extraneous | Fields stripped! | keys_before={list(updated.keys())} | keys_after={list(clean_data.keys())} | 'source' in clean_data: {'source' in clean_data}"
+                )
                 return False, clean_data
 
         return True, frontmatter
@@ -197,6 +204,9 @@ class NoteFixer:
         Returns:
             (has_changes, fixed_frontmatter, body)
         """
+        logger.debug(
+            f"[DEBUG TRACE] fixer.fix Start | 'source' in current: {'source' in current}"
+        )
         total_changes = False
 
         unchanged, current = self.check_and_fix_dates(
@@ -218,6 +228,9 @@ class NoteFixer:
         if not unchanged:
             total_changes = True
 
+        logger.debug(
+            f"[DEBUG TRACE] fixer.fix End | total_changes={total_changes} | 'source' in current: {'source' in current}"
+        )
         return total_changes, current, body
 
     # -- private: date helpers ----------------------------------------------

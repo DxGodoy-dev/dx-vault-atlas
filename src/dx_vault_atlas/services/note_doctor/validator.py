@@ -122,6 +122,9 @@ class NoteDoctorValidator:
         self, file_path: Path, frontmatter: dict[str, Any], body: str
     ) -> ValidationResult:
         """Validate a note in-memory against schema and business rules."""
+        logger.debug(
+            f"[DEBUG TRACE] validator.validate_content Start | path={file_path.name} | 'source' in frontmatter: {'source' in frontmatter}"
+        )
         note_type = frontmatter.get("type")
         if not note_type or not isinstance(note_type, str):
             return ValidationResult(
@@ -332,12 +335,18 @@ class NoteDoctorValidator:
         try:
             # Only pass fields the model knows about
             filtered = strip_unknown_fields(model_cls, frontmatter)
+            logger.debug(
+                f"[DEBUG TRACE] validator._run_pydantic | class={model_cls.__name__} | 'source' in filtered: {'source' in filtered} | 'source' in fm: {'source' in frontmatter}"
+            )
             model_cls(**filtered)
         except ValidationError as e:
             logger.debug(
                 f"Pydantic errors | {file_path.name}: {_format_pydantic_errors(e)}"
             )
             for error in e.errors():
+                logger.debug(
+                    f"[DEBUG TRACE] validator._run_pydantic Error item | type={error['type']} | loc={error['loc']}"
+                )
                 # Skip "extra_forbidden" errors — extraneous fields are
                 # handled by the fixer's check_and_fix_extraneous step.
                 if error["type"] == "extra_forbidden":
