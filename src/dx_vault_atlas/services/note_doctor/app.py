@@ -182,8 +182,16 @@ class DoctorApp:
                 f"[Doctor Debug] --------------------------------------------------"
             )
             logger.debug(f"[Doctor Debug] Validating: {note_path.name}")
+            logger.debug(
+                f"[DEBUG TRACE] app._classify_note Start | 'source' in file? (we will see after parse)"
+            )
 
         result = self.validator.validate(note_path)
+
+        if debug_mode and not result.error:
+            logger.debug(
+                f"[DEBUG TRACE] app._classify_note After Validator | 'source' in fm: {'source' in result.frontmatter}"
+            )
 
         if result.error:
             # File unreadable or gross YAML error - can't auto-fix
@@ -205,11 +213,21 @@ class DoctorApp:
             result.body,
         )
 
+        if debug_mode:
+            logger.debug(
+                f"[DEBUG TRACE] app._classify_note After fixer.fix | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"
+            )
+
         # Apply config-driven mappings
         if self._apply_field_mappings(fm_final):
             has_changes = True
         if self._apply_value_mappings(fm_final):
             has_changes = True
+
+        if debug_mode:
+            logger.debug(
+                f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"
+            )
 
         if result.is_valid and not has_changes:
             if debug_mode:
@@ -396,9 +414,17 @@ class DoctorApp:
 
             if debug_mode:
                 logger.debug(f"CLI prompt | {file_path.name}")
+                logger.debug(
+                    f"[DEBUG TRACE] app._process_note Before Fix Gather | 'source' in fm: {'source' in frontmatter}"
+                )
                 fixes = self._gather_fixes_cli(result)
             else:
                 fixes = self.tui.gather_fixes(result)
+
+            if debug_mode:
+                logger.debug(
+                    f"[DEBUG TRACE] app._process_note Fixes Gathered = {fixes}"
+                )
 
             if not fixes:
                 ui.console.print("[yellow]Skipped or no fixes provided.[/yellow]")
@@ -414,8 +440,18 @@ class DoctorApp:
                 frontmatter,
                 fixes,
             )
+            if debug_mode:
+                logger.debug(
+                    f"[DEBUG TRACE] app._process_note After Patcher | 'source' in fm: {'source' in frontmatter}"
+                )
+
             # Strip fields not allowed by the note's Pydantic model
             _, frontmatter = self.fixer.check_and_fix_extraneous(frontmatter)
+            if debug_mode:
+                logger.debug(
+                    f"[DEBUG TRACE] app._process_note After check_and_fix_extraneous | 'source' in fm: {'source' in frontmatter}"
+                )
+
             self._write_note(file_path, frontmatter, result.body)
             ui.console.print(f"[green]Fixed {file_path.name}[/green]")
 

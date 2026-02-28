@@ -132,7 +132,6 @@ class DoctorTUI:
         self, steps: list[Any], missing: set[str], invalid: set[str]
     ) -> None:
         """Add dependent steps if missing or invalid."""
-        needs_type_fix = "type" in missing or "type" in invalid
 
         # Map step to the field key it modifies/provides
         dependency_map = [
@@ -143,11 +142,10 @@ class DoctorTUI:
         ]
 
         for step, key in dependency_map:
-            # If type is being fixed, we conservatively add dependencies
-            # If key is explicitly missing/invalid, we MUST add it
-            if (
-                needs_type_fix or key in missing or key in invalid
-            ) and step not in steps:
+            # Only add dependency if it is explicitly missing/invalid.
+            # We no longer add them unconditionally when fixing type,
+            # to avoid false positives (e.g., asking for source in a RefNote).
+            if (key in missing or key in invalid) and step not in steps:
                 steps.append(step)
 
     def _filter_conditions_if_missing(

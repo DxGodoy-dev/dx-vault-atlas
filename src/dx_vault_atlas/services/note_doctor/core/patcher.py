@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from dx_vault_atlas.shared.logger import logger
+
 
 class FrontmatterPatcher:
     """Applies fixes to note frontmatter."""
@@ -41,6 +43,10 @@ class FrontmatterPatcher:
         Returns:
             Modified frontmatter dictionary with canonical ordering.
         """
+        logger.debug(
+            f"[DEBUG TRACE] patcher.apply_fixes Start | fixes={fixes} | 'source' in fm: {'source' in frontmatter}"
+        )
+
         # Iterate over fixes and apply
         for key, value in fixes.items():
             # Map wizard keys to frontmatter keys
@@ -77,10 +83,17 @@ class FrontmatterPatcher:
 
             else:
                 # Handle Enum values (Wizard returns Enum members)
-                if hasattr(value, "value"):
-                    frontmatter[target_key] = value.value
-                else:
-                    frontmatter[target_key] = value
+                val_to_inject = value.value if hasattr(value, "value") else value
+
+                # If we are injecting the type from a template enum, strip '.md'
+                if (
+                    target_key == "type"
+                    and isinstance(val_to_inject, str)
+                    and val_to_inject.endswith(".md")
+                ):
+                    val_to_inject = val_to_inject[:-3]
+
+                frontmatter[target_key] = val_to_inject
 
         # Reorder fields based on canonical order
         ordered_frontmatter = {}
@@ -95,4 +108,7 @@ class FrontmatterPatcher:
             if key not in ordered_frontmatter:
                 ordered_frontmatter[key] = value
 
+        logger.debug(
+            f"[DEBUG TRACE] patcher.apply_fixes End | 'source' in ordered_fm: {'source' in ordered_frontmatter}"
+        )
         return ordered_frontmatter
