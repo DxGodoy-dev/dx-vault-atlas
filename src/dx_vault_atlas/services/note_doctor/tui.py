@@ -6,7 +6,7 @@ from dx_vault_atlas.shared.tui import (
     WizardConfig,
     run_wizard,
 )
-from dx_vault_atlas.shared.tui.wizard import (
+from dx_vault_atlas.services.note_creator.tui_steps import (
     AREA_STEP,
     PRIORITY_STEP,
     SOURCE_STEP,
