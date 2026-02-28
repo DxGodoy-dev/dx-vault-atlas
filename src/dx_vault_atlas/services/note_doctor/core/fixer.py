@@ -76,6 +76,12 @@ class NoteFixer:
         updated = frontmatter.copy()
         has_changes = False
 
+        from dx_vault_atlas.shared.logger import logger
+
+        logger.debug(
+            f"[Doctor Debug] Fixer 'check_and_fix_dates' start | frontmatter={updated}"
+        )
+
         has_changes = self._fix_created(
             file_path,
             frontmatter,
@@ -85,6 +91,9 @@ class NoteFixer:
         has_changes = self._fix_updated(updated, has_changes)
 
         if has_changes:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'check_and_fix_dates' applied changes | updated={updated}"
+            )
             return False, updated
         return True, frontmatter
 
@@ -100,6 +109,12 @@ class NoteFixer:
         updated = frontmatter.copy()
         has_changes = False
 
+        from dx_vault_atlas.shared.logger import logger
+
+        logger.debug(
+            f"[Doctor Debug] Fixer 'check_and_fix_enums' start | type={updated.get('type')}"
+        )
+
         has_changes |= self._fix_type(updated)
         has_changes |= self._fix_status(updated)
         has_changes |= self._fix_area(updated)
@@ -107,6 +122,9 @@ class NoteFixer:
         has_changes |= self._fix_task_project_defaults(updated)
 
         if has_changes:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'check_and_fix_enums' applied changes | updated={updated}"
+            )
             return False, updated
         return True, frontmatter
 
@@ -122,6 +140,12 @@ class NoteFixer:
         has_changes = False
         safe_fields = {"status", "version", "tags"}
 
+        from dx_vault_atlas.shared.logger import logger
+
+        logger.debug(
+            f"[Doctor Debug] Fixer 'check_and_fix_defaults' start | safe_fields={safe_fields}"
+        )
+
         note_type = updated.get("type")
         if not note_type or not isinstance(note_type, str):
             return True, frontmatter
@@ -135,10 +159,14 @@ class NoteFixer:
                 continue
             val = self._resolve_field_default(model_cls, name)
             if val is not _SENTINEL:
+                logger.debug(f"[Doctor Debug] Fixer injecting default {name}={val}")
                 updated[name] = val
                 has_changes = True
 
         if has_changes:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'check_and_fix_defaults' applied changes | updated={updated}"
+            )
             return False, updated
         return True, frontmatter
 
@@ -151,6 +179,10 @@ class NoteFixer:
         if the model forbids extra fields.
         """
         updated = frontmatter.copy()
+
+        from dx_vault_atlas.shared.logger import logger
+
+        logger.debug(f"[Doctor Debug] Fixer 'check_and_fix_extraneous' start")
 
         note_type = updated.get("type")
         if not note_type or not isinstance(note_type, str):
@@ -166,7 +198,14 @@ class NoteFixer:
 
             clean_data = strip_unknown_fields(model_cls, updated)
             if clean_data != updated:
+                logger.debug(
+                    f"[Doctor Debug] Fixer removed extraneous fields | original={list(updated.keys())} -> new={list(clean_data.keys())}"
+                )
                 return False, clean_data
+        else:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'check_and_fix_extraneous' skipped | model_config.extra={getattr(model_cls, 'model_config', {}).get('extra')}"
+            )
 
         return True, frontmatter
 
@@ -374,9 +413,17 @@ class NoteFixer:
 
         changed = False
         if "status" not in updated or not updated["status"]:
+            from dx_vault_atlas.shared.logger import logger
+
+            logger.debug(
+                f"[Doctor Debug] Task/Project default injecting status='to_do'"
+            )
             updated["status"] = "to_do"
             changed = True
         if "priority" not in updated:
+            from dx_vault_atlas.shared.logger import logger
+
+            logger.debug(f"[Doctor Debug] Task/Project default injecting priority=1")
             updated["priority"] = 1
             changed = True
         return changed

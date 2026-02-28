@@ -178,7 +178,10 @@ class DoctorApp:
             ValidationResult – still invalid after auto-fix
         """
         if debug_mode:
-            logger.debug(f"Validating: {note_path.name}")
+            logger.debug(
+                f"[Doctor Debug] --------------------------------------------------"
+            )
+            logger.debug(f"[Doctor Debug] Validating: {note_path.name}")
 
         result = self.validator.validate(note_path)
 
@@ -188,10 +191,13 @@ class DoctorApp:
 
         if debug_mode and not result.is_valid:
             logger.debug(
-                f"Invalid | {note_path.name}"
+                f"[Doctor Debug] Invalid | {note_path.name}"
                 f" | missing={result.missing_fields}"
                 f" | invalid={result.invalid_fields}"
             )
+
+        if debug_mode:
+            logger.debug(f"[Doctor Debug] Frontmatter BEFORE fix: {result.frontmatter}")
 
         has_changes, fm_final, body = self.fixer.fix(
             note_path,
@@ -206,18 +212,35 @@ class DoctorApp:
             has_changes = True
 
         if result.is_valid and not has_changes:
+            if debug_mode:
+                logger.debug(
+                    f"[Doctor Debug] Note valid and unchanged | {note_path.name}"
+                )
             return self._tag_valid(result, note_path)
 
         if has_changes:
             if debug_mode:
-                logger.debug(f"Auto-fixing | {note_path.name}")
+                logger.debug(
+                    f"[Doctor Debug] Auto-fixing | {note_path.name} | has_changes=True"
+                )
+                logger.debug(f"[Doctor Debug] Frontmatter AFTER fix: {fm_final}")
 
             # Re-validate in memory before writing to disk
             fixed_result = self.validator.validate_content(note_path, fm_final, body)
 
             if fixed_result.is_valid:
+                if debug_mode:
+                    logger.debug(
+                        f"[Doctor Debug] Re-validation passed. Writing auto-fixed note."
+                    )
                 self._write_note(note_path, fm_final, body)
                 return self._tag_valid(fixed_result, note_path)
+
+            if debug_mode:
+                logger.debug(
+                    f"[Doctor Debug] Re-validation failed. Still invalid | "
+                    f"missing={fixed_result.missing_fields} | invalid={fixed_result.invalid_fields}"
+                )
             result = fixed_result
 
         if self._is_only_version_issue(result):
@@ -398,10 +421,17 @@ class DoctorApp:
 
             result = self.validator.validate(file_path)
             if result.is_valid:
+                if debug_mode:
+                    logger.debug(f"[Doctor Debug] TUI fix successful. Note is valid.")
                 ui.console.print(f"[green]Note {file_path.name} is now valid.[/green]")
                 return None
 
             frontmatter = dict(result.frontmatter)
+            if debug_mode:
+                logger.debug(
+                    f"[Doctor Debug] TUI fix still failed! | "
+                    f"missing={result.missing_fields} | invalid={result.invalid_fields}"
+                )
             ui.console.print("[yellow]Note still has issues. Continuing...[/yellow]")
 
         ui.console.print(
