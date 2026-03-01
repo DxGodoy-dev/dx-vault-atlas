@@ -336,6 +336,9 @@ class NoteFixer:
 
         if "type" in updated and isinstance(updated["type"], str):
             val = updated["type"].strip().lower()
+            # Strip ".md" suffix (TUI wizard returns e.g. "ref.md")
+            if val.endswith(".md"):
+                val = val[:-3]
             if val in known and val != updated["type"]:
                 updated["type"] = val
                 return True

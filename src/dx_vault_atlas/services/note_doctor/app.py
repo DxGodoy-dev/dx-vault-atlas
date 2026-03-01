@@ -224,6 +224,11 @@ class DoctorApp:
         if self._apply_value_mappings(fm_final):
             has_changes = True
 
+        # Strip extraneous fields that config mappings may have introduced
+        unchanged, fm_final = self.fixer.check_and_fix_extraneous(fm_final)
+        if not unchanged:
+            has_changes = True
+
         if debug_mode:
             logger.debug(
                 f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"

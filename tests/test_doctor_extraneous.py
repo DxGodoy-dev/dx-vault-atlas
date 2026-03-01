@@ -87,3 +87,65 @@ status: to_do
 
         _, fixed_fm, _ = fixer.fix(path, dict(result.frontmatter), result.body)
         assert "source" in fixed_fm, "source should be kept for info notes"
+
+    def test_fix_type_strips_md_suffix(self, fixer: NoteFixer, tmp_path: Path) -> None:
+        """Fixer should normalise 'ref.md' to 'ref' in the type field."""
+        path = tmp_path / "20260218024306_test_md_suffix.md"
+        content = """\
+---
+version: '1.0'
+title: Test MD Suffix
+aliases:
+- Test MD Suffix
+tags: []
+created: 2026-02-18 02:43:06
+updated: 2026-02-18 02:43:06
+type: ref.md
+source: ia
+---
+# body
+"""
+        path.write_text(content, encoding="utf-8")
+        result = NoteDoctorValidator().validate(path)
+        has_changes, fixed_fm, _ = fixer.fix(
+            path, dict(result.frontmatter), result.body
+        )
+        assert has_changes, "Expected changes (type normalisation + source strip)"
+        assert fixed_fm["type"] == "ref", f"Expected 'ref', got {fixed_fm['type']!r}"
+        assert "source" not in fixed_fm, "source should be stripped for ref notes"
+
+    def test_ref_note_extraneous_after_fixer(
+        self, validator: NoteDoctorValidator, fixer: NoteFixer, tmp_path: Path
+    ) -> None:
+        """Re-validation after fixer should be clean for ref notes."""
+        path = tmp_path / "20260218024306_clean_ref.md"
+        content = """\
+---
+version: '1.0'
+title: Clean Ref
+aliases:
+- Clean Ref
+tags: []
+created: 2026-02-18 02:43:06
+updated: 2026-02-18 02:43:06
+type: ref.md
+source: ia
+---
+# body
+"""
+        path.write_text(content, encoding="utf-8")
+
+        # Fixer normalises type and strips source
+        result = validator.validate(path)
+        has_changes, fixed_fm, body = fixer.fix(
+            path, dict(result.frontmatter), result.body
+        )
+        assert fixed_fm["type"] == "ref"
+        assert "source" not in fixed_fm
+
+        # Re-validation should pass
+        fixed_result = validator.validate_content(path, fixed_fm, body)
+        assert fixed_result.is_valid, (
+            f"Re-validation failed: missing={fixed_result.missing_fields} "
+            f"invalid={fixed_result.invalid_fields}"
+        )
