@@ -205,18 +205,14 @@ class DoctorApp:
             )
 
         if debug_mode:
-            logger.debug(f"[Doctor Debug] Frontmatter BEFORE fix: {result.frontmatter}")
-
+            print(
+                f"!!! DOCTOR DEBUG: _classify_note | type before fixer={result.frontmatter.get('type')} | source before={result.frontmatter.get('source')} | path={note_path.name}"
+            )
         has_changes, fm_final, body = self.fixer.fix(
             note_path,
             result.frontmatter.copy(),
             result.body,
         )
-
-        if debug_mode:
-            logger.debug(
-                f"[DEBUG TRACE] app._classify_note After fixer.fix | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"
-            )
 
         # Apply config-driven mappings
         if self._apply_field_mappings(fm_final):
@@ -230,6 +226,9 @@ class DoctorApp:
             has_changes = True
 
         if debug_mode:
+            print(
+                f"!!! DOCTOR DEBUG: _classify_note | type after mappings={fm_final.get('type')} | source after mappings={fm_final.get('source')} | has_changes={has_changes}"
+            )
             logger.debug(
                 f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"
             )
