@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic_core import PydanticUndefined
 
@@ -14,9 +14,6 @@ from dx_vault_atlas.services.note_doctor.core.date_resolver import (
     DateResolver,
 )
 from dx_vault_atlas.services.note_doctor.validator import MODEL_MAP
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
-    YamlParserService,
-)
 from dx_vault_atlas.shared.logger import logger
 
 # ---------------------------------------------------------------------------
@@ -50,226 +47,58 @@ def _match_status_enum(raw: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Fixer
+# Rules (Strategy Pattern)
 # ---------------------------------------------------------------------------
 
 
-class NoteFixer:
-    """Applies fixes to note frontmatter based on rules."""
+class FixRuleProtocol(Protocol):
+    """Protocol for note fixing rules."""
 
-    def __init__(self) -> None:
-        """Initialise the fixer with date resolver and YAML parser."""
-        self.date_resolver = DateResolver()
-        self.parser = YamlParserService()
-
-    # -- public API ---------------------------------------------------------
-
-    def check_and_fix_dates(
+    def apply(
         self,
         file_path: Path,
-        frontmatter: dict[str, Any],
-    ) -> tuple[bool, dict[str, Any]]:
-        """Check and fix dates according to hierarchy.
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        """Apply the rule to the frontmatter.
+
+        Args:
+            file_path: Path to the note file.
+            original: The original frontmatter.
+            updated: The frontmatter being updated.
 
         Returns:
-            (is_unchanged, updated_frontmatter)
+            True if changes were made, False otherwise.
         """
-        updated = frontmatter.copy()
+        ...
+
+
+class DateFixRule:
+    """Fixes created and updated dates."""
+
+    def __init__(self, date_resolver: DateResolver) -> None:
+        self.date_resolver = date_resolver
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
         has_changes = False
 
-        from dx_vault_atlas.shared.logger import logger
-
         logger.debug(
-            f"[Doctor Debug] Fixer 'check_and_fix_dates' start | frontmatter={updated}"
+            f"[Doctor Debug] Fixer 'DateFixRule' start | frontmatter={updated}"
         )
 
-        has_changes = self._fix_created(
-            file_path,
-            frontmatter,
-            updated,
-            has_changes,
-        )
+        has_changes = self._fix_created(file_path, original, updated, has_changes)
         has_changes = self._fix_updated(updated, has_changes)
 
         if has_changes:
             logger.debug(
-                f"[Doctor Debug] Fixer 'check_and_fix_dates' applied changes | updated={updated}"
+                f"[Doctor Debug] Fixer 'DateFixRule' applied changes | updated={updated}"
             )
-            return False, updated
-        return True, frontmatter
-
-    def check_and_fix_enums(
-        self,
-        frontmatter: dict[str, Any],
-    ) -> tuple[bool, dict[str, Any]]:
-        """Check and fix enum values (case, whitespace, coercion).
-
-        Returns:
-            (is_unchanged, updated_frontmatter)
-        """
-        updated = frontmatter.copy()
-        has_changes = False
-
-        from dx_vault_atlas.shared.logger import logger
-
-        logger.debug(
-            f"[Doctor Debug] Fixer 'check_and_fix_enums' start | type={updated.get('type')}"
-        )
-
-        has_changes |= self._fix_type(updated)
-        has_changes |= self._fix_status(updated)
-        has_changes |= self._fix_area(updated)
-        has_changes |= self._fix_aliases_tags(updated)
-        has_changes |= self._fix_task_project_defaults(updated)
-
-        if has_changes:
-            logger.debug(
-                f"[Doctor Debug] Fixer 'check_and_fix_enums' applied changes | updated={updated}"
-            )
-            return False, updated
-        return True, frontmatter
-
-    def check_and_fix_defaults(
-        self,
-        frontmatter: dict[str, Any],
-    ) -> tuple[bool, dict[str, Any]]:
-        """Fill missing fields with safe Pydantic defaults.
-
-        Safe fields: status, version, tags.
-        """
-        updated = frontmatter.copy()
-        has_changes = False
-        safe_fields = {"status", "version", "tags"}
-
-        from dx_vault_atlas.shared.logger import logger
-
-        logger.debug(
-            f"[Doctor Debug] Fixer 'check_and_fix_defaults' start | safe_fields={safe_fields}"
-        )
-
-        note_type = updated.get("type")
-        if not note_type or not isinstance(note_type, str):
-            return True, frontmatter
-
-        model_cls = MODEL_MAP.get(note_type)
-        if not model_cls:
-            return True, frontmatter
-
-        for name in safe_fields:
-            if name in updated:
-                continue
-            val = self._resolve_field_default(model_cls, name)
-            if val is not _SENTINEL:
-                logger.debug(f"[Doctor Debug] Fixer injecting default {name}={val}")
-                updated[name] = val
-                has_changes = True
-
-        if has_changes:
-            logger.debug(
-                f"[Doctor Debug] Fixer 'check_and_fix_defaults' applied changes | updated={updated}"
-            )
-            return False, updated
-        return True, frontmatter
-
-    def check_and_fix_extraneous(
-        self,
-        frontmatter: dict[str, Any],
-    ) -> tuple[bool, dict[str, Any]]:
-        """Remove fields that are not supported by the note's Pydantic model
-
-        if the model forbids extra fields.
-        """
-        updated = frontmatter.copy()
-
-        from dx_vault_atlas.shared.logger import logger
-
-        logger.debug(f"[Doctor Debug] Fixer 'check_and_fix_extraneous' start")
-
-        note_type = updated.get("type")
-        if not note_type or not isinstance(note_type, str):
-            return True, frontmatter
-
-        model_cls = MODEL_MAP.get(note_type)
-        if not model_cls:
-            return True, frontmatter
-
-        # Only remove extras if the model explicitly forbids them
-        if getattr(model_cls, "model_config", {}).get("extra") == "forbid":
-            from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
-
-            logger.debug(
-                f"[DEBUG TRACE] fixer.check_and_fix_extraneous | Stripping unknowns for {model_cls.__name__} | 'source' in updated: {'source' in updated}"
-            )
-            clean_data = strip_unknown_fields(model_cls, updated)
-            if clean_data != updated:
-                logger.debug(
-                    f"[Doctor Debug] Fixer removed extraneous fields | original={list(updated.keys())} -> new={list(clean_data.keys())} | 'source' in clean_data: {'source' in clean_data}"
-                )
-                return False, clean_data
-        else:
-            logger.debug(
-                f"[Doctor Debug] Fixer 'check_and_fix_extraneous' skipped | model_config.extra={getattr(model_cls, 'model_config', {}).get('extra')}"
-            )
-
-        return True, frontmatter
-
-    @staticmethod
-    def _resolve_field_default(
-        model_cls: type,
-        field_name: str,
-    ) -> object:
-        """Return the safe default for *field_name*, or _SENTINEL."""
-        if field_name not in model_cls.model_fields:
-            return _SENTINEL
-        info = model_cls.model_fields[field_name]
-        if info.default is not None and info.default is not PydanticUndefined:
-            val = info.default
-            return val.value if hasattr(val, "value") else val
-        if info.default_factory is not None:
-            return info.default_factory()
-        return _SENTINEL
-
-    def fix(
-        self,
-        file_path: Path,
-        current: dict[str, Any],
-        body: str,
-    ) -> tuple[bool, dict[str, Any], str]:
-        """Orchestrate all fixes for a note file in memory.
-
-        Returns:
-            (has_changes, fixed_frontmatter, body)
-        """
-        logger.debug(
-            f"[DEBUG TRACE] fixer.fix Start | 'source' in current: {'source' in current}"
-        )
-        total_changes = False
-
-        unchanged, current = self.check_and_fix_dates(
-            file_path,
-            current,
-        )
-        if not unchanged:
-            total_changes = True
-
-        unchanged, current = self.check_and_fix_enums(current)
-        if not unchanged:
-            total_changes = True
-
-        unchanged, current = self.check_and_fix_defaults(current)
-        if not unchanged:
-            total_changes = True
-
-        unchanged, current = self.check_and_fix_extraneous(current)
-        if not unchanged:
-            total_changes = True
-
-        logger.debug(
-            f"[DEBUG TRACE] fixer.fix End | total_changes={total_changes} | 'source' in current: {'source' in current}"
-        )
-        return total_changes, current, body
-
-    # -- private: date helpers ----------------------------------------------
+        return has_changes
 
     def _fix_created(
         self,
@@ -278,11 +107,7 @@ class NoteFixer:
         updated: dict[str, Any],
         has_changes: bool,
     ) -> bool:
-        """Resolve the *created* field from filename or frontmatter."""
-        true_created = self.date_resolver.resolve_created(
-            file_path,
-            original,
-        )
+        true_created = self.date_resolver.resolve_created(file_path, original)
         current_created = original.get("created")
 
         if true_created:
@@ -302,12 +127,7 @@ class NoteFixer:
 
         return has_changes
 
-    def _fix_updated(
-        self,
-        updated: dict[str, Any],
-        has_changes: bool,
-    ) -> bool:
-        """Ensure *updated* ≥ *created*."""
+    def _fix_updated(self, updated: dict[str, Any], has_changes: bool) -> bool:
         c_val = updated.get("created")
 
         if "updated" not in updated:
@@ -327,16 +147,40 @@ class NoteFixer:
 
         return has_changes
 
-    # -- private: enum helpers ----------------------------------------------
+
+class EnumFixRule:
+    """Fixes enum values (type, status, area, aliases, tags, task/project)."""
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        has_changes = False
+
+        logger.debug(
+            f"[Doctor Debug] Fixer 'EnumFixRule' start | type={updated.get('type')}"
+        )
+
+        has_changes |= self._fix_type(updated)
+        has_changes |= self._fix_status(updated)
+        has_changes |= self._fix_area(updated)
+        has_changes |= self._fix_aliases_tags(updated)
+        has_changes |= self._fix_task_project_defaults(updated)
+
+        if has_changes:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'EnumFixRule' applied changes | updated={updated}"
+            )
+        return has_changes
 
     @staticmethod
     def _fix_type(updated: dict[str, Any]) -> bool:
-        """Normalise note type or default to 'note'."""
         known = set(MODEL_MAP.keys()) | {"note"}
 
         if "type" in updated and isinstance(updated["type"], str):
             val = updated["type"].strip().lower()
-            # Strip ".md" suffix (TUI wizard returns e.g. "ref.md")
             if val.endswith(".md"):
                 val = val[:-3]
             if val in known and val != updated["type"]:
@@ -351,7 +195,6 @@ class NoteFixer:
 
     @staticmethod
     def _fix_status(updated: dict[str, Any]) -> bool:
-        """Coerce status lists/strings to their canonical enum value."""
         if "status" not in updated:
             return False
 
@@ -379,7 +222,6 @@ class NoteFixer:
 
     @staticmethod
     def _fix_area(updated: dict[str, Any]) -> bool:
-        """Fix area casing to match the enum."""
         if "area" not in updated:
             return False
         if not isinstance(updated["area"], str):
@@ -397,7 +239,6 @@ class NoteFixer:
 
     @staticmethod
     def _fix_aliases_tags(updated: dict[str, Any]) -> bool:
-        """Coerce aliases to list and tags to empty list."""
         changed = False
 
         if "aliases" in updated:
@@ -416,27 +257,157 @@ class NoteFixer:
         return changed
 
     @staticmethod
-    def _fix_task_project_defaults(
-        updated: dict[str, Any],
-    ) -> bool:
-        """Ensure task/project notes have status and priority."""
+    def _fix_task_project_defaults(updated: dict[str, Any]) -> bool:
         note_type = updated.get("type", "note")
         if note_type not in ("task", "project"):
             return False
 
         changed = False
         if "status" not in updated or not updated["status"]:
-            from dx_vault_atlas.shared.logger import logger
-
             logger.debug(
                 f"[Doctor Debug] Task/Project default injecting status='to_do'"
             )
             updated["status"] = "to_do"
             changed = True
         if "priority" not in updated:
-            from dx_vault_atlas.shared.logger import logger
-
             logger.debug(f"[Doctor Debug] Task/Project default injecting priority=1")
             updated["priority"] = 1
             changed = True
         return changed
+
+
+class DefaultsFixRule:
+    """Fills missing fields with safe Pydantic defaults."""
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        has_changes = False
+        safe_fields = {"status", "version", "tags"}
+
+        logger.debug(
+            f"[Doctor Debug] Fixer 'DefaultsFixRule' start | safe_fields={safe_fields}"
+        )
+
+        note_type = updated.get("type")
+        if not note_type or not isinstance(note_type, str):
+            return False
+
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return False
+
+        for name in safe_fields:
+            if name in updated:
+                continue
+            val = self._resolve_field_default(model_cls, name)
+            if val is not _SENTINEL:
+                logger.debug(f"[Doctor Debug] Fixer injecting default {name}={val}")
+                updated[name] = val
+                has_changes = True
+
+        if has_changes:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'DefaultsFixRule' applied changes | updated={updated}"
+            )
+        return has_changes
+
+    @staticmethod
+    def _resolve_field_default(model_cls: type, field_name: str) -> object:
+        if field_name not in model_cls.model_fields:
+            return _SENTINEL
+        info = model_cls.model_fields[field_name]
+        if info.default is not None and info.default is not PydanticUndefined:
+            val = info.default
+            return val.value if hasattr(val, "value") else val
+        if info.default_factory is not None:
+            return info.default_factory()
+        return _SENTINEL
+
+
+class ExtraneousFieldsFixRule:
+    """Removes fields not supported by the note's Pydantic model if it forbids extras."""
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        logger.debug(f"[Doctor Debug] Fixer 'ExtraneousFieldsFixRule' start")
+
+        note_type = updated.get("type")
+        if not note_type or not isinstance(note_type, str):
+            return False
+
+        model_cls = MODEL_MAP.get(note_type)
+        if not model_cls:
+            return False
+
+        if getattr(model_cls, "model_config", {}).get("extra") == "forbid":
+            from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
+
+            logger.debug(
+                f"[DEBUG TRACE] fixer.ExtraneousFieldsFixRule | Stripping unknowns for {model_cls.__name__} | 'source' in updated: {'source' in updated}"
+            )
+
+            clean_data = strip_unknown_fields(model_cls, updated)
+
+            # Since this is a reference dict, we have to clear and update to preserve the original dict reference
+            if clean_data != updated:
+                logger.debug(
+                    f"[Doctor Debug] Fixer removed extraneous fields | original={list(updated.keys())} -> new={list(clean_data.keys())} | 'source' in clean_data: {'source' in clean_data}"
+                )
+                updated.clear()
+                updated.update(clean_data)
+                return True
+        else:
+            logger.debug(
+                f"[Doctor Debug] Fixer 'ExtraneousFieldsFixRule' skipped | model_config.extra={getattr(model_cls, 'model_config', {}).get('extra')}"
+            )
+
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Fixer
+# ---------------------------------------------------------------------------
+
+
+class NoteFixer:
+    """Applies fixes to note frontmatter based on rules."""
+
+    def __init__(self, rules: list[FixRuleProtocol]) -> None:
+        """Initialise the fixer with a list of rules."""
+        self.rules = rules
+
+    # -- public API ---------------------------------------------------------
+
+    def fix(
+        self,
+        file_path: Path,
+        current: dict[str, Any],
+        body: str,
+    ) -> tuple[bool, dict[str, Any], str]:
+        """Orchestrate all fixes for a note file in memory.
+
+        Returns:
+            (has_changes, fixed_frontmatter, body)
+        """
+        logger.debug(
+            f"[DEBUG TRACE] fixer.fix Start | 'source' in current: {'source' in current}"
+        )
+        total_changes = False
+        original = current.copy()
+
+        for rule in self.rules:
+            if rule.apply(file_path, original, current):
+                total_changes = True
+
+        logger.debug(
+            f"[DEBUG TRACE] fixer.fix End | total_changes={total_changes} | 'source' in current: {'source' in current}"
+        )
+        return total_changes, current, body

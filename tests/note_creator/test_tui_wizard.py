@@ -4,6 +4,7 @@ from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
 from dx_vault_atlas.shared.tui.wizard import WizardConfig
 from dx_vault_atlas.services.note_creator.tui_steps import (
     AREA_STEP,
+    NOTE_CREATOR_STEPS,
     PRIORITY_STEP,
     SOURCE_STEP,
     STATUS_STEP,

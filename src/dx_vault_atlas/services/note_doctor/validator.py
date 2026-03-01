@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from packaging.version import parse as parse_version
 from pydantic import ValidationError
@@ -67,6 +67,134 @@ def _format_pydantic_errors(exc: ValidationError) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Validation Rules (OCP)
+# ---------------------------------------------------------------------------
+
+
+class ValidationRule(Protocol):
+    """Protocol for note validation rules."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Evaluate note properties and append issues to tracking lists."""
+        ...
+
+
+class IntegrityRule:
+    """Check title-vs-filename and title-in-aliases consistency."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Validate integrity based on filename and aliases."""
+        title = frontmatter.get("title")
+        aliases = frontmatter.get("aliases")
+
+        if title and isinstance(title, str):
+            norm_title = _normalize(title)
+            norm_fname = _normalize(file_path.stem)
+            if norm_title != norm_fname:
+                invalid.append("integrity_filename")
+
+        if (
+            title
+            and aliases
+            and isinstance(aliases, (list, tuple))
+            and title not in aliases
+        ):
+            invalid.append("integrity_aliases")
+
+
+class PriorityRule:
+    """Flag invalid priority values."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Verify priority field."""
+        val = frontmatter.get("priority")
+        if val is None:
+            return
+        try:
+            Priority(val)
+        except ValueError:
+            invalid.append("priority")
+
+
+class SourceRule:
+    """Warn on non-enum source values (lenient)."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Verify source field."""
+        val = frontmatter.get("source")
+        if not val:
+            return
+        try:
+            NoteSource(val)
+        except ValueError:
+            if isinstance(val, str) and val.strip():
+                warnings.append(f"unknown_source: {val}")
+
+
+class AreaRule:
+    """Flag invalid area values."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Verify area field."""
+        val = frontmatter.get("area")
+        if not val:
+            return
+        try:
+            NoteArea(val)
+        except ValueError:
+            invalid.append("area")
+
+
+class VersionRule:
+    """Flag outdated schema versions."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Verify the schema version."""
+        raw = str(frontmatter.get("version", ""))
+        if not raw:
+            return
+        current = parse_version(raw)
+        if current < _TARGET_VERSION and "version" not in invalid:
+            invalid.append("version")
+
+
+# ---------------------------------------------------------------------------
 # Data class
 # ---------------------------------------------------------------------------
 
@@ -104,9 +232,24 @@ class ValidationResult:
 class NoteDoctorValidator:
     """Validates notes using Pydantic models and enum checks."""
 
-    def __init__(self) -> None:
-        """Initialise the validator with a YAML parser."""
-        self.yaml_parser = YamlParserService()
+    def __init__(
+        self,
+        yaml_parser: YamlParserService,
+        rules: list[ValidationRule] | None = None,
+    ) -> None:
+        """Initialise the validator with a YAML parser and optional validation rules."""
+        self.yaml_parser = yaml_parser
+        self.rules = (
+            rules
+            if rules is not None
+            else [
+                IntegrityRule(),
+                PriorityRule(),
+                SourceRule(),
+                AreaRule(),
+                VersionRule(),
+            ]
+        )
 
     # -- public API ---------------------------------------------------------
 
@@ -136,11 +279,11 @@ class NoteDoctorValidator:
             )
 
         missing = self._check_required(note_type, frontmatter)
-        invalid = self._check_integrity(file_path, frontmatter)
+        invalid: list[str] = []
         warnings: list[str] = []
 
-        self._check_enums(frontmatter, invalid, warnings)
-        self._check_version(frontmatter, invalid)
+        for rule in self.rules:
+            rule.check(file_path, frontmatter, invalid, warnings)
 
         model_cls = MODEL_MAP.get(note_type)
         if model_cls:
@@ -225,101 +368,6 @@ class NoteDoctorValidator:
                 if key not in frontmatter:
                     missing.append(key)
         return missing
-
-    def _check_integrity(
-        self,
-        file_path: Path,
-        frontmatter: dict[str, Any],
-    ) -> list[str]:
-        """Check title-vs-filename and title-in-aliases consistency."""
-        invalid: list[str] = []
-        title = frontmatter.get("title")
-        aliases = frontmatter.get("aliases")
-
-        if title and isinstance(title, str):
-            norm_title = _normalize(title)
-            norm_fname = _normalize(file_path.stem)
-            if norm_title != norm_fname:
-                invalid.append("integrity_filename")
-
-        if (
-            title
-            and aliases
-            and isinstance(aliases, (list, tuple))
-            and title not in aliases
-        ):
-            invalid.append("integrity_aliases")
-
-        return invalid
-
-    # -- private helpers (enum + version checks) ----------------------------
-
-    def _check_enums(
-        self,
-        frontmatter: dict[str, Any],
-        invalid: list[str],
-        warnings: list[str],
-    ) -> None:
-        """Validate priority, source and area enum values in-place."""
-        self._check_priority(frontmatter, invalid)
-        self._check_source(frontmatter, warnings)
-        self._check_area(frontmatter, invalid)
-
-    def _check_priority(
-        self,
-        frontmatter: dict[str, Any],
-        invalid: list[str],
-    ) -> None:
-        """Flag invalid priority values."""
-        val = frontmatter.get("priority")
-        if val is None:
-            return
-        try:
-            Priority(val)
-        except ValueError:
-            invalid.append("priority")
-
-    def _check_source(
-        self,
-        frontmatter: dict[str, Any],
-        warnings: list[str],
-    ) -> None:
-        """Warn on non-enum source values (lenient)."""
-        val = frontmatter.get("source")
-        if not val:
-            return
-        try:
-            NoteSource(val)
-        except ValueError:
-            if isinstance(val, str) and val.strip():
-                warnings.append(f"unknown_source: {val}")
-
-    def _check_area(
-        self,
-        frontmatter: dict[str, Any],
-        invalid: list[str],
-    ) -> None:
-        """Flag invalid area values."""
-        val = frontmatter.get("area")
-        if not val:
-            return
-        try:
-            NoteArea(val)
-        except ValueError:
-            invalid.append("area")
-
-    def _check_version(
-        self,
-        frontmatter: dict[str, Any],
-        invalid: list[str],
-    ) -> None:
-        """Flag outdated schema versions."""
-        raw = str(frontmatter.get("version", ""))
-        if not raw:
-            return
-        current = parse_version(raw)
-        if current < _TARGET_VERSION and "version" not in invalid:
-            invalid.append("version")
 
     # -- private helpers (pydantic) -----------------------------------------
 

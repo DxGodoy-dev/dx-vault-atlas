@@ -6,7 +6,6 @@ runs Fixer & Validator, and checks results.
 
 import re
 import shutil
-import sys
 from pathlib import Path
 
 import yaml
@@ -19,14 +18,22 @@ class NoAliasDumper(yaml.SafeDumper):
         return True
 
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
-
-from dx_vault_atlas.services.note_doctor.core.fixer import (  # noqa: E402
+from dx_vault_atlas.services.note_doctor.core.date_resolver import (
+    DateResolver,
+)
+from dx_vault_atlas.services.note_doctor.core.fixer import (
+    DateFixRule,
+    DefaultsFixRule,
+    EnumFixRule,
+    ExtraneousFieldsFixRule,
     NoteFixer,
 )
-from dx_vault_atlas.services.note_doctor.validator import (  # noqa: E402
+from dx_vault_atlas.services.note_doctor.validator import (
     NoteDoctorValidator,
+)
+from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+    YamlParserService,
+    YamlParseError,
 )
 
 SCENARIOS_DIR = Path(__file__).parent / "doctor_scenarios"
@@ -129,17 +136,15 @@ EXPECTATIONS = {
             "updated: 2025-01-02 12:00:00",
         ],
     },
-    # 17: Has unknown_field. Fixer doesn't remove unknowns → no changes.
-    # Pydantic extra="forbid" → invalid.
+    # 17: Has unknown_field. Fixer strips unknowns → valid.
     "17_extra_fields": {
-        "changes_made": False,
-        "valid_after_fix": False,
+        "changes_made": True,
+        "valid_after_fix": True,
     },
-    # 18: source: "Aliens" (invalid enum, no NoteSource match).
-    # Fixer doesn't modify it → no changes. Validator catches it.
+    # 18: source: "Aliens" on a task note. Extraneous fields stripped → valid.
     "18_unknown_enum_source": {
         "changes_made": False,
-        "valid_after_fix": False,
+        "valid_after_fix": True,
     },
     # 19: Malformed YAML → parser fails → no changes, invalid
     "19_malformed_frontmatter": {
@@ -158,14 +163,23 @@ EXPECTATIONS = {
 }
 
 
-def main() -> None:  # noqa: C901
+def test_all_doctor_scenarios() -> None:  # noqa: C901
     """Run all 20 doctor scenarios and check expectations."""
     if TEMP_DIR.exists():
         shutil.rmtree(TEMP_DIR)
     TEMP_DIR.mkdir()
 
-    fixer = NoteFixer()
-    validator = NoteDoctorValidator()
+    dr = DateResolver()
+    fixer = NoteFixer(
+        rules=[
+            DateFixRule(dr),
+            EnumFixRule(),
+            DefaultsFixRule(),
+            ExtraneousFieldsFixRule(),
+        ]
+    )
+    parser = YamlParserService()
+    validator = NoteDoctorValidator(yaml_parser=parser)
 
     results: list[bool] = []
     scenarios = sorted(SCENARIOS_DIR.glob("*.md"))
@@ -182,7 +196,7 @@ def main() -> None:  # noqa: C901
         if "14_alias_consistency_fail" not in case_name:
             try:
                 content = temp_path.read_text("utf-8")
-                parsed = fixer.parser.parse(content)
+                parsed = parser.parse(content)
                 title = parsed.frontmatter.get("title")
                 if title and isinstance(title, str):
                     safe = title.lower().replace(" ", "_").replace("-", "_")
@@ -202,7 +216,13 @@ def main() -> None:  # noqa: C901
                 pass
 
         # ── Run Fixer ──
-        has_changes, fixed_fm, body = fixer.fix(temp_path)
+        try:
+            parsed_current = parser.parse(temp_path.read_text("utf-8"))
+            has_changes, fixed_fm, body = fixer.fix(
+                temp_path, parsed_current.frontmatter, parsed_current.body
+            )
+        except YamlParseError:
+            has_changes, fixed_fm, body = False, {}, ""
 
         # ── Write back if changed ──
         if has_changes:
@@ -272,8 +292,4 @@ def main() -> None:  # noqa: C901
     passed = sum(results)
     total = len(results)
     print(f"\nSummary: {passed}/{total} passed.")  # noqa: T201
-    sys.exit(0 if passed == total and total > 0 else 1)
-
-
-if __name__ == "__main__":
-    main()
+    assert passed == total and total > 0, f"{total - passed} scenarios failed"

@@ -13,7 +13,11 @@ class TestNoteValidator:
     @pytest.fixture
     def validator(self) -> NoteDoctorValidator:
         """Create validator instance."""
-        return NoteDoctorValidator()
+        from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+            YamlParserService,
+        )
+
+        return NoteDoctorValidator(YamlParserService())
 
     @pytest.fixture
     def valid_info_note(self, tmp_path: Path) -> Path:

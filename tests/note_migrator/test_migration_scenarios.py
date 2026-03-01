@@ -193,9 +193,6 @@ def run_tests():
                     results[CURRENT_SCENARIO] = f"FAIL ({status}) - Content damaged"
 
         except Exception as e:
-            import traceback
-
-            traceback.print_exc()
             results[CURRENT_SCENARIO] = f"CRASH: {e}"
             print(f"Content at crash:\n{temp_file.read_text(encoding='utf-8')}")
 

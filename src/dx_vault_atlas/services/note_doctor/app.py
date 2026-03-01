@@ -1,45 +1,35 @@
 """Note Doctor application orchestrator."""
 
-import re
 from pathlib import Path
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.models.enums import (
-    NoteArea,
-    NoteSource,
-    Priority,
-)
 from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
     TitleNormalizer,
 )
-from dx_vault_atlas.services.note_doctor.core.fixer import NoteFixer
+from dx_vault_atlas.services.note_doctor.core.cli import DoctorCLI
+from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
+from dx_vault_atlas.services.note_doctor.core.fixer import (
+    DateFixRule,
+    DefaultsFixRule,
+    EnumFixRule,
+    ExtraneousFieldsFixRule,
+    NoteFixer,
+)
+from dx_vault_atlas.services.note_doctor.core.io_service import NoteIOService
 from dx_vault_atlas.services.note_doctor.core.patcher import (
     FrontmatterPatcher,
 )
 from dx_vault_atlas.services.note_doctor.tui import DoctorTUI
 from dx_vault_atlas.services.note_doctor.validator import (
-    MODEL_MAP,
     NoteDoctorValidator,
     ValidationResult,
 )
 from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
     YamlParserService,
 )
-from dx_vault_atlas.shared import console as ui
 from dx_vault_atlas.shared.config import GlobalConfig
 from dx_vault_atlas.shared.core.scanner import VaultScanner
 from dx_vault_atlas.shared.logger import logger
-
-# Field → selectable options (used in CLI debug mode)
-_ENUM_OPTIONS: dict[str, list[Any]] = {
-    "type": list(MODEL_MAP.keys()),
-    "source": [x.value for x in NoteSource],
-    "area": [x.value for x in NoteArea],
-    "priority": [x.value for x in Priority],
-}
-
-# Fields handled separately in CLI gather flow
-_SKIP_FIELDS = {"title", "aliases", "dates", "version", "status", "tags"}
 
 # Maximum fix attempts before skipping a note
 _MAX_FIX_ATTEMPTS = 2
@@ -52,17 +42,39 @@ class DoctorApp:
     - Scan vault
     - Validate notes (using Validator)
     - Coordinate fixes (using NoteFixer)
-    - Prompt user (using DoctorTUI)
-    - Read/Write files (via YamlParser)
+    - Prompt user (via CLI / TUI)
+    - Read/Write files (via IO Service)
     """
 
-    def __init__(self, settings: GlobalConfig) -> None:
+    def __init__(
+        self,
+        settings: GlobalConfig,
+        cli: DoctorCLI,
+        io_service: NoteIOService,
+    ) -> None:
         """Initialise DoctorApp with dependencies."""
         self.settings = settings
+        self.cli = cli
+        self.io = io_service
         self.scanner = VaultScanner()
-        self.validator = NoteDoctorValidator()
         self.yaml_parser = YamlParserService()
-        self.fixer = NoteFixer()
+        self.date_resolver = DateResolver()
+        self.validator = NoteDoctorValidator(yaml_parser=self.yaml_parser)
+
+        # Instantiate fix rules
+        self.date_rule = DateFixRule(self.date_resolver)
+        self.enum_rule = EnumFixRule()
+        self.defaults_rule = DefaultsFixRule()
+        self.extraneous_rule = ExtraneousFieldsFixRule()
+
+        self.fixer = NoteFixer(
+            rules=[
+                self.date_rule,
+                self.enum_rule,
+                self.defaults_rule,
+                self.extraneous_rule,
+            ]
+        )
         self.patcher = FrontmatterPatcher()
         self.tui = DoctorTUI()
 
@@ -78,11 +90,10 @@ class DoctorApp:
         if debug_mode:
             logger.debug(f"Doctor start | mode={mode_str}")
 
-        ui.show_header(f"Note Doctor {mode_str}")
-        ui.console.print(f"[bold]Vault path:[/bold] {self.settings.vault_path}")
+        self.cli.show_header(mode_str, str(self.settings.vault_path))
 
         notes = list(self.scanner.scan(self.settings.vault_path))
-        ui.console.print(f"\n[bold]Scanning {len(notes)} notes...[/bold]")
+        self.cli.show_scan_count(len(notes))
         if debug_mode:
             logger.debug(f"Found {len(notes)} notes in scan")
 
@@ -96,7 +107,7 @@ class DoctorApp:
     def _run_date_fix_mode(self, notes: list[Path]) -> None:
         """Run only date fixing logic."""
         fixed = sum(1 for n in notes if self._fix_date_for_note(n, save=True))
-        ui.console.print(f"\n[green]✓ Fixed dates in {fixed} notes.[/green]")
+        self.cli.show_date_fix_result(fixed)
 
     def _fix_date_for_note(
         self,
@@ -105,26 +116,23 @@ class DoctorApp:
         save: bool = False,
     ) -> bool:
         """Check and optionally fix dates for a single note."""
-        try:
-            content = note_path.read_text(encoding="utf-8")
-            parsed = self.yaml_parser.parse(content)
-        except Exception as e:
-            logger.error(f"Error reading {note_path.name}: {e}")
+        parsed = self.io.read_note(note_path)
+        if not parsed:
             return False
 
-        date_ok, new_fm = self.fixer.check_and_fix_dates(
+        new_fm = parsed.frontmatter.copy()
+        has_changes = self.date_rule.apply(
             note_path,
             parsed.frontmatter,
+            new_fm,
         )
+        date_ok = not has_changes
 
         if not date_ok and save:
-            try:
-                self._write_note(note_path, new_fm, parsed.body)
-                ui.console.print(f"[green]Fixed dates for {note_path.name}[/green]")
+            if self.io.write_note(note_path, new_fm, parsed.body):
+                self.cli.show_note_date_fixed(note_path.name)
                 return True
-            except Exception as e:
-                logger.error(f"Error writing {note_path.name}: {e}")
-                return False
+            return False
 
         return not date_ok
 
@@ -156,7 +164,7 @@ class DoctorApp:
                 # outcome is a ValidationResult
                 invalid_results.append(outcome)
 
-        self._report_results(
+        self.cli.report_results(
             valid_count,
             warn_count,
             version_count,
@@ -221,7 +229,13 @@ class DoctorApp:
             has_changes = True
 
         # Strip extraneous fields that config mappings may have introduced
-        unchanged, fm_final = self.fixer.check_and_fix_extraneous(fm_final)
+        original_fm_final = fm_final.copy()
+        rule_made_changes = self.extraneous_rule.apply(
+            note_path,
+            original_fm_final,
+            fm_final,
+        )
+        unchanged = not rule_made_changes
         if not unchanged:
             has_changes = True
 
@@ -255,7 +269,7 @@ class DoctorApp:
                     logger.debug(
                         f"[Doctor Debug] Re-validation passed. Writing auto-fixed note."
                     )
-                self._write_note(note_path, fm_final, body)
+                self.io.write_note(note_path, fm_final, body)
                 return self._tag_valid(fixed_result, note_path)
 
             if debug_mode:
@@ -276,10 +290,7 @@ class DoctorApp:
         self,
         frontmatter: dict[str, Any],
     ) -> bool:
-        """Rename frontmatter keys based on ``field_mappings`` config.
-
-        Returns ``True`` if any key was renamed.
-        """
+        """Rename frontmatter keys based on ``field_mappings`` config."""
         changed = False
         for old_key, new_key in self.settings.field_mappings.items():
             if old_key in frontmatter:
@@ -293,10 +304,7 @@ class DoctorApp:
         self,
         frontmatter: dict[str, Any],
     ) -> bool:
-        """Replace frontmatter values based on ``value_mappings`` config.
-
-        Returns ``True`` if any value was replaced.
-        """
+        """Replace frontmatter values based on ``value_mappings`` config."""
         changed = False
         for field, replacements in self.settings.value_mappings.items():
             if field in frontmatter and isinstance(
@@ -315,10 +323,8 @@ class DoctorApp:
         note_path: Path,
     ) -> str:
         """Print warnings (if any) and return the tag string."""
+        self.cli.show_note_warnings(note_path.name, result.warnings)
         if result.warnings:
-            ui.console.print(
-                f"[yellow]⚠️  {note_path.name}: {', '.join(result.warnings)}[/yellow]"
-            )
             return "warning"
         return "valid"
 
@@ -331,35 +337,6 @@ class DoctorApp:
         issues.discard("dates")
         return issues == {"version"}
 
-    # -- reporting ----------------------------------------------------------
-
-    @staticmethod
-    def _report_results(
-        valid: int,
-        warnings: int,
-        version_outdated: int,
-        invalid: int,
-    ) -> None:
-        """Print summary report."""
-        ui.console.print(f"\n[green]✓[/green] {valid} notes healthy")
-
-        if warnings > 0:
-            ui.console.print(
-                f"[yellow]⚠️[/yellow] {warnings} notes have"
-                " warnings (e.g. unknown source)"
-            )
-        if version_outdated > 0:
-            ui.console.print(
-                f"[yellow]![/yellow] {version_outdated} notes"
-                " have outdated versions (run 'dxva migrate')"
-            )
-        if invalid > 0:
-            ui.console.print(f"[red]![/red] {invalid} notes need manual attention")
-        elif warnings > 0:
-            ui.console.print("\n[bold]Doctor finished (with warnings).[/bold]")
-        else:
-            ui.console.print("\n[bold]Doctor finished.[/bold]")
-
     # -- interactive repair -------------------------------------------------
 
     def _process_invalid_results(
@@ -371,7 +348,6 @@ class DoctorApp:
         if not results:
             return
 
-        ui.console.print()
         for i, result in enumerate(results, 1):
             action = self._process_note(
                 result,
@@ -382,7 +358,7 @@ class DoctorApp:
             if action == "__quit__":
                 return
 
-        ui.console.print("\n[bold]Doctor finished.[/bold]")
+        self.cli.show_doctor_finished()
 
     def _process_note(
         self,
@@ -391,12 +367,9 @@ class DoctorApp:
         total: int,
         debug_mode: bool,
     ) -> str | None:
-        """Process a single invalid note interactively.
-
-        Returns ``"__quit__"`` or ``None``.
-        """
+        """Process a single invalid note interactively."""
         file_path = result.file_path
-        ui.console.print(f"\n[cyan]━━━ [{index}/{total}] {file_path.name} ━━━[/cyan]")
+        self.cli.show_note_header(index, total, file_path.name)
 
         # Handle filename mismatch before the fix loop
         if "integrity_filename" in result.invalid_fields:
@@ -404,14 +377,12 @@ class DoctorApp:
             if rename_out is not None:
                 file_path, result = rename_out
                 if result.is_valid:
-                    ui.console.print(
-                        f"[green]Note {file_path.name} is now valid.[/green]"
-                    )
+                    self.cli.show_note_valid(file_path.name)
                     return None
 
         frontmatter = dict(result.frontmatter)
         for _attempt in range(_MAX_FIX_ATTEMPTS):
-            self._print_issues(
+            self.cli.print_issues(
                 result.missing_fields,
                 result.invalid_fields,
             )
@@ -421,7 +392,7 @@ class DoctorApp:
                 logger.debug(
                     f"[DEBUG TRACE] app._process_note Before Fix Gather | 'source' in fm: {'source' in frontmatter}"
                 )
-                fixes = self._gather_fixes_cli(result)
+                fixes = self.cli.gather_fixes(result)
             else:
                 fixes = self.tui.gather_fixes(result)
 
@@ -431,13 +402,13 @@ class DoctorApp:
                 )
 
             if not fixes:
-                ui.console.print("[yellow]Skipped or no fixes provided.[/yellow]")
+                self.cli.show_skip_or_no_fixes()
                 return None
             if fixes.get("__quit__"):
-                ui.console.print("[red]Exiting...[/red]")
+                self.cli.show_exiting()
                 return "__quit__"
             if fixes.get("__skip__"):
-                ui.console.print("[yellow]Skipping note...[/yellow]")
+                self.cli.show_skipping_note()
                 return None
 
             frontmatter = self.patcher.apply_fixes(
@@ -450,20 +421,25 @@ class DoctorApp:
                 )
 
             # Strip fields not allowed by the note's Pydantic model
-            _, frontmatter = self.fixer.check_and_fix_extraneous(frontmatter)
+            original_for_rules = frontmatter.copy()
+            self.extraneous_rule.apply(
+                file_path,
+                original_for_rules,
+                frontmatter,
+            )
             if debug_mode:
                 logger.debug(
                     f"[DEBUG TRACE] app._process_note After check_and_fix_extraneous | 'source' in fm: {'source' in frontmatter}"
                 )
 
-            self._write_note(file_path, frontmatter, result.body)
-            ui.console.print(f"[green]Fixed {file_path.name}[/green]")
+            self.io.write_note(file_path, frontmatter, result.body)
+            self.cli.show_note_fixed(file_path.name)
 
             result = self.validator.validate(file_path)
             if result.is_valid:
                 if debug_mode:
                     logger.debug(f"[Doctor Debug] TUI fix successful. Note is valid.")
-                ui.console.print(f"[green]Note {file_path.name} is now valid.[/green]")
+                self.cli.show_note_valid(file_path.name)
                 return None
 
             frontmatter = dict(result.frontmatter)
@@ -472,31 +448,23 @@ class DoctorApp:
                     f"[Doctor Debug] TUI fix still failed! | "
                     f"missing={result.missing_fields} | invalid={result.invalid_fields}"
                 )
-            ui.console.print("[yellow]Note still has issues. Continuing...[/yellow]")
+            self.cli.show_fix_failed()
 
-        ui.console.print(
-            f"[red]Could not fully fix {file_path.name} "
-            f"after {_MAX_FIX_ATTEMPTS} attempts. Skipping.[/red]"
-        )
+        self.cli.show_max_attempts_reached(file_path.name, _MAX_FIX_ATTEMPTS)
         return None
 
-    # -- helpers (printing / writing) ---------------------------------------
+    # -- helpers ------------------------------------------------------------
 
     def _handle_rename(
         self,
         result: ValidationResult,
     ) -> tuple[Path, ValidationResult] | None:
-        """Offer to rename file to match title.
-
-        Returns:
-            ``(new_path, new_result)`` on success, or ``None``.
-        """
+        """Offer to rename file to match title."""
         title = result.frontmatter.get("title", "")
         if not title:
             return None
 
         stem = result.file_path.stem
-        from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
 
         ts_match = DateResolver.extract_timestamp_from_stem(stem)
 
@@ -517,155 +485,25 @@ class DoctorApp:
         if new_path == result.file_path:
             return None
 
-        ui.console.print(
-            f"[yellow]Filename mismatch:[/yellow] {result.file_path.name} → {new_name}"
-        )
-        if not ui.confirm("Rename file?", default=True):
+        if not self.cli.prompt_rename(result.file_path.name, new_name):
             return None
 
-        result.file_path.rename(new_path)
-        ui.console.print(f"[green]Renamed → {new_name}[/green]")
-        new_result = self.validator.validate(new_path)
-        return new_path, new_result
-
-    @staticmethod
-    def _print_issues(
-        missing: list[str],
-        invalid: list[str],
-    ) -> None:
-        """Print missing and invalid fields."""
-        if missing:
-            ui.console.print(f"[yellow]Missing:[/yellow] {', '.join(missing)}")
-        real = [x for x in invalid if x != "dates"]
-        if real:
-            ui.console.print(f"[red]Invalid:[/red] {', '.join(real)}")
-
-    def _write_note(
-        self,
-        file_path: Path,
-        frontmatter: dict[str, Any],
-        body: str,
-    ) -> None:
-        """Write updated note to disk."""
-        yaml_content = self.yaml_parser.serialize_frontmatter(
-            frontmatter,
-        )
-        file_path.write_text(
-            yaml_content + body,
-            encoding="utf-8",
-        )
-
-    # -- helpers (CLI gather) -----------------------------------------------
-
-    def _gather_fixes_cli(
-        self,
-        result: ValidationResult,
-    ) -> dict[str, Any]:
-        """Gather fixes via CLI input (debug mode)."""
-        fixes: dict[str, Any] = {}
-
-        self._handle_title_fix(result, fixes)
-        self._handle_field_fixes(result, fixes)
-
-        return fixes
-
-    @staticmethod
-    def _handle_title_fix(
-        result: ValidationResult,
-        fixes: dict[str, Any],
-    ) -> None:
-        """Handle title/aliases repair in CLI mode."""
-        if "title" in result.missing_fields:
-            if ui.confirm(
-                f"Missing title for {result.file_path.name}. Fix?",
-                default=True,
-            ):
-                title = ui.query("Enter title")
-                fixes["title"] = title
-                fixes["aliases"] = [title]
-            return
-
-        needs_aliases = (
-            "aliases" in result.missing_fields or "aliases" in result.invalid_fields
-        )
-        if needs_aliases:
-            existing = result.frontmatter.get("title", "").strip(
-                '"',
-            )
-            if existing:
-                fixes["aliases"] = [existing]
-
-    def _handle_field_fixes(
-        self,
-        result: ValidationResult,
-        fixes: dict[str, Any],
-    ) -> None:
-        """Handle non-title field repairs in CLI mode."""
-        extraneous = self._get_extraneous_fields(result.frontmatter)
-        issues = (
-            (set(result.missing_fields) | set(result.invalid_fields))
-            - _SKIP_FIELDS
-            - extraneous
-        )
-
-        for field in issues:
-            if not ui.confirm(
-                f"Issue with '{field}'. Fix?",
-                default=True,
-            ):
-                continue
-
-            if field in _ENUM_OPTIONS:
-                val = self._gather_enum_selection(
-                    field,
-                    _ENUM_OPTIONS[field],
-                )
-                if val is not None:
-                    fixes[field] = val
-            else:
-                fixes[field] = ui.query(
-                    f"Enter value for {field}",
-                )
-
-    @staticmethod
-    def _gather_enum_selection(
-        field: str,
-        options: list[str | int],
-    ) -> str | int:
-        """Present a numbered menu for enum selection."""
-        ui.console.print(f"Select {field}:")
-        for idx, opt in enumerate(options, 1):
-            ui.console.print(f"{idx}. {opt}")
-
-        while True:
-            sel = ui.query(f"Choose (1-{len(options)})")
-            try:
-                idx = int(sel)
-                if 1 <= idx <= len(options):
-                    return options[idx - 1]
-                ui.console.print(
-                    f"[red]Invalid selection. Choose 1-{len(options)}[/red]"
-                )
-            except ValueError:
-                ui.console.print("[red]Please enter a number.[/red]")
-
-    @staticmethod
-    def _get_extraneous_fields(frontmatter: dict[str, Any]) -> set[str]:
-        """Return field names present in frontmatter but forbidden by the model."""
-        note_type = frontmatter.get("type")
-        if not note_type or not isinstance(note_type, str):
-            return set()
-        model_cls = MODEL_MAP.get(note_type)
-        if not model_cls:
-            return set()
-        if getattr(model_cls, "model_config", {}).get("extra") != "forbid":
-            return set()
-        from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
-
-        clean = strip_unknown_fields(model_cls, frontmatter)
-        return set(frontmatter.keys()) - set(clean.keys())
+        success = self.io.rename_note(result.file_path, new_path)
+        if success:
+            self.cli.show_renamed(new_name)
+            new_result = self.validator.validate(new_path)
+            return new_path, new_result
+        return None
 
 
 def create_app(settings: GlobalConfig) -> DoctorApp:
     """Create DoctorApp instance."""
-    return DoctorApp(settings)
+    yaml_parser = YamlParserService()
+    io_service = NoteIOService(yaml_parser)
+    cli = DoctorCLI()
+
+    return DoctorApp(
+        settings=settings,
+        cli=cli,
+        io_service=io_service,
+    )

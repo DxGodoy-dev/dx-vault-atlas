@@ -63,6 +63,3 @@ if __name__ == "__main__":
         print("\nTEST PASSED")
     except Exception as e:
         print(f"\nTEST FAILED: {e}")
-        import traceback
-
-        traceback.print_exc()

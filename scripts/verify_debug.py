@@ -52,9 +52,6 @@ with (
     print("Exit Code:", result.exit_code)
     if result.exception:
         print("Exception:", result.exception)
-        import traceback
-
-        traceback.print_tb(result.exception.__traceback__)
     # print("Output:", result.stdout) # Output might be huge
 
     success = False

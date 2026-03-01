@@ -4,20 +4,40 @@ from pathlib import Path
 
 import pytest
 
-from dx_vault_atlas.services.note_doctor.core.fixer import NoteFixer
+from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
+from dx_vault_atlas.services.note_doctor.core.fixer import (
+    DateFixRule,
+    DefaultsFixRule,
+    EnumFixRule,
+    ExtraneousFieldsFixRule,
+    NoteFixer,
+)
 from dx_vault_atlas.services.note_doctor.validator import NoteDoctorValidator
+from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParserService
 
 
 class TestExtraneousFieldStripping:
     """Verify that extraneous fields are removed during the auto-fix step."""
 
     @pytest.fixture
-    def validator(self) -> NoteDoctorValidator:
-        return NoteDoctorValidator()
+    def yaml_parser(self) -> YamlParserService:
+        return YamlParserService()
+
+    @pytest.fixture
+    def validator(self, yaml_parser: YamlParserService) -> NoteDoctorValidator:
+        return NoteDoctorValidator(yaml_parser=yaml_parser)
 
     @pytest.fixture
     def fixer(self) -> NoteFixer:
-        return NoteFixer()
+        dr = DateResolver()
+        return NoteFixer(
+            rules=[
+                DateFixRule(dr),
+                EnumFixRule(),
+                DefaultsFixRule(),
+                ExtraneousFieldsFixRule(),
+            ]
+        )
 
     def test_ref_note_source_stripped(
         self, validator: NoteDoctorValidator, fixer: NoteFixer, tmp_path: Path
@@ -106,7 +126,7 @@ source: ia
 # body
 """
         path.write_text(content, encoding="utf-8")
-        result = NoteDoctorValidator().validate(path)
+        result = NoteDoctorValidator(yaml_parser=YamlParserService()).validate(path)
         has_changes, fixed_fm, _ = fixer.fix(
             path, dict(result.frontmatter), result.body
         )

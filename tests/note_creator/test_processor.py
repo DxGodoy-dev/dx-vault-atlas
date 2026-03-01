@@ -39,27 +39,16 @@ class TestNoteProcessor:
             priority=Priority.HIGH,
         )
 
-    def test_create_note_writes_file(
-        self, processor: NoteProcessor, sample_note: BaseNote, tmp_path: Path
-    ) -> None:
-        """Should render template and write to file."""
-        output_path = tmp_path / "test_note.md"
-
-        result = processor.create_note("info.md", sample_note, output_path)
-
-        assert result == output_path
-        assert output_path.exists()
-        assert output_path.read_text(encoding="utf-8") == "Run mocked content"
-
-        # Verify template service called correctly
+    def test_render_note(self, processor: NoteProcessor, sample_note: BaseNote) -> None:
+        """Should render template and return content."""
+        content = processor.render_note("info.md", sample_note)
+        assert "Run mocked content" in content
         processor.templating.render.assert_called_once_with("info.md", sample_note)
 
-    def test_create_note_raises_if_exists(
-        self, processor: NoteProcessor, sample_note: BaseNote, tmp_path: Path
+    def test_render_note_with_body(
+        self, processor: NoteProcessor, sample_note: BaseNote
     ) -> None:
-        """Should raise FileExistsError if file exists."""
-        output_path = tmp_path / "test_note.md"
-        output_path.write_text("existing content")
-
-        with pytest.raises(FileExistsError):
-            processor.create_note("info.md", sample_note, output_path)
+        """Should render template and append body."""
+        content = processor.render_note("info.md", sample_note, "body text")
+        assert "Run mocked content" in content
+        assert "body text" in content

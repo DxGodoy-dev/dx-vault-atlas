@@ -1,7 +1,7 @@
 from dataclasses import replace
 from typing import Any
 
-from dx_vault_atlas.services.note_doctor.validator import MODEL_MAP, ValidationResult
+from dx_vault_atlas.services.note_doctor.validator import ValidationResult
 from dx_vault_atlas.shared.tui import (
     WizardConfig,
     run_wizard,
@@ -18,6 +18,10 @@ from dx_vault_atlas.services.note_creator.tui_steps import (
 
 class DoctorTUI:
     """Handles user interaction for Note Doctor using TUI Wizard."""
+
+    def __init__(self, model_map: dict[str, Any]) -> None:
+        """Initialize DoctorTUI with dependencies."""
+        self.model_map = model_map
 
     def gather_fixes(self, result: ValidationResult) -> dict[str, Any]:
         """Run wizard to gather fixes for missing/invalid fields."""
@@ -166,13 +170,12 @@ class DoctorTUI:
 
         return final_steps
 
-    @staticmethod
-    def _get_extraneous_fields(frontmatter: dict) -> set[str]:
+    def _get_extraneous_fields(self, frontmatter: dict) -> set[str]:
         """Return field names present in frontmatter but forbidden by the model."""
         note_type = frontmatter.get("type")
         if not note_type or not isinstance(note_type, str):
             return set()
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = self.model_map.get(note_type)
         if not model_cls:
             return set()
         if getattr(model_cls, "model_config", {}).get("extra") != "forbid":

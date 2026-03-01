@@ -8,3 +8,26 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Tests
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+pytest.xml
+tests/
+test_vault/
+
+# Temporary files & scripts
+*.log
+*.tmp
+*.temp
+temp/
+tmp/
+scratch/
+scripts/
+debug_date.py
+integration_test.py
+repro_*.py
+verify_*.py
+output.txt
