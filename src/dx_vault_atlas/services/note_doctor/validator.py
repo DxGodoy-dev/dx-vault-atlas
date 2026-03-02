@@ -7,6 +7,10 @@ from typing import Any, Protocol
 from packaging.version import parse as parse_version
 from pydantic import ValidationError
 
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
@@ -15,11 +19,6 @@ from dx_vault_atlas.services.note_creator.models.enums import (
 )
 from dx_vault_atlas.services.note_creator.models.note import (
     BaseNote,
-    InfoNote,
-    MocNote,
-    ProjectNote,
-    RefNote,
-    TaskNote,
 )
 from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
     TitleNormalizer,
@@ -30,18 +29,6 @@ from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
 )
 from dx_vault_atlas.shared.logger import logger
 from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-MODEL_MAP: dict[str, type[BaseNote]] = {
-    "project": ProjectNote,
-    "task": TaskNote,
-    "info": InfoNote,
-    "moc": MocNote,
-    "ref": RefNote,
-}
 
 _TARGET_VERSION = parse_version(SCHEMA_VERSION)
 
@@ -285,7 +272,7 @@ class NoteDoctorValidator:
         for rule in self.rules:
             rule.check(file_path, frontmatter, invalid, warnings)
 
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = NoteModelRegistry.get_model(note_type)
         if model_cls:
             self._run_pydantic(
                 model_cls,
@@ -357,7 +344,7 @@ class NoteDoctorValidator:
         frontmatter: dict[str, Any],
     ) -> list[str]:
         """Return list of missing required fields based on Pydantic models."""
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = NoteModelRegistry.get_model(note_type)
         if not model_cls:
             return []
 

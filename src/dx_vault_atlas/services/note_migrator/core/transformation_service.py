@@ -5,8 +5,8 @@ from typing import Any
 
 from packaging.version import parse as parse_version
 
+from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
-from dx_vault_atlas.services.note_migrator.validator import MODEL_MAP
 from dx_vault_atlas.shared.config import GlobalConfig
 from dx_vault_atlas.shared.logger import logger
 from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
@@ -105,7 +105,7 @@ class TransformationService:
         if not (
             note_type
             and isinstance(note_type, str)
-            and (model_cls := MODEL_MAP.get(note_type))
+            and (model_cls := NoteModelRegistry.get_model(note_type))
         ):
             return False
 

@@ -2,23 +2,23 @@
 
 from typing import Any
 
+from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
     NoteSource,
     Priority,
 )
 from dx_vault_atlas.services.note_doctor.validator import (
-    MODEL_MAP,
     ValidationResult,
 )
 from dx_vault_atlas.shared import console as ui
 
 # Field → selectable options (used in CLI debug mode)
 _ENUM_OPTIONS: dict[str, list[Any]] = {
-    "type": list(MODEL_MAP.keys()),
-    "source": [x.value for x in NoteSource],
-    "area": [x.value for x in NoteArea],
-    "priority": [x.value for x in Priority],
+    "type": list(NoteModelRegistry.get_all().keys()),
+    "source": [e.value for e in NoteSource],
+    "area": [e.value for e in NoteArea],
+    "priority": [e.value for e in Priority],
 }
 
 # Fields handled separately in CLI gather flow
@@ -226,7 +226,7 @@ class DoctorCLI:
         note_type = frontmatter.get("type")
         if not note_type or not isinstance(note_type, str):
             return set()
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = NoteModelRegistry.get_model(note_type)
         if not model_cls:
             return set()
         if getattr(model_cls, "model_config", {}).get("extra") != "forbid":

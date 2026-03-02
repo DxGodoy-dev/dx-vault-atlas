@@ -7,13 +7,11 @@ Complies with:
 """
 
 import json
-import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict
 
 from platformdirs import user_config_dir, user_log_dir
-from pydantic import Field, field_validator, ValidationError
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dx_vault_atlas.shared.logger import logger
@@ -46,11 +44,11 @@ class GlobalConfig(BaseSettings):
     )
 
     # Logic
-    field_mappings: Dict[str, str] = Field(
+    field_mappings: dict[str, str] = Field(
         default_factory=lambda: {"date": "created"},
         description="Mapping for legacy frontmatter fields.",
     )
-    value_mappings: Dict[str, Dict[str, str]] = Field(
+    value_mappings: dict[str, dict[str, str]] = Field(
         default_factory=dict,
         description=(
             "Per-field value replacements. "

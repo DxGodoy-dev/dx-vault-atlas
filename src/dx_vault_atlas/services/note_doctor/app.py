@@ -187,11 +187,11 @@ class DoctorApp:
         """
         if debug_mode:
             logger.debug(
-                f"[Doctor Debug] --------------------------------------------------"
+                "[Doctor Debug] --------------------------------------------------"
             )
             logger.debug(f"[Doctor Debug] Validating: {note_path.name}")
             logger.debug(
-                f"[DEBUG TRACE] app._classify_note Start | 'source' in file? (we will see after parse)"
+                "[DEBUG TRACE] app._classify_note Start | 'source' in file? (we will see after parse)"
             )
 
         result = self.validator.validate(note_path)
@@ -267,7 +267,7 @@ class DoctorApp:
             if fixed_result.is_valid:
                 if debug_mode:
                     logger.debug(
-                        f"[Doctor Debug] Re-validation passed. Writing auto-fixed note."
+                        "[Doctor Debug] Re-validation passed. Writing auto-fixed note."
                     )
                 self.io.write_note(note_path, fm_final, body)
                 return self._tag_valid(fixed_result, note_path)
@@ -438,7 +438,7 @@ class DoctorApp:
             result = self.validator.validate(file_path)
             if result.is_valid:
                 if debug_mode:
-                    logger.debug(f"[Doctor Debug] TUI fix successful. Note is valid.")
+                    logger.debug("[Doctor Debug] TUI fix successful. Note is valid.")
                 self.cli.show_note_valid(file_path.name)
                 return None
 

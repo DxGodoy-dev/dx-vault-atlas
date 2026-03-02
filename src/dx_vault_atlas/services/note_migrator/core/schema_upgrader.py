@@ -2,8 +2,8 @@
 
 from packaging.version import parse as parse_version
 
+from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
-from dx_vault_atlas.services.note_migrator.validator import MODEL_MAP
 from dx_vault_atlas.shared.logger import logger
 
 
@@ -37,7 +37,7 @@ class SchemaUpgrader:
         if (
             note_type
             and isinstance(note_type, str)
-            and (model_cls := MODEL_MAP.get(note_type))
+            and (model_cls := NoteModelRegistry.get_model(note_type))
         ):
             # Only keep fields that are part of the model + 'type'
             # We DONT use Pydantic validation/dump because it might coerce types

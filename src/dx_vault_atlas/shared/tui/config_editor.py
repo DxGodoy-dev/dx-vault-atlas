@@ -1,6 +1,5 @@
 """Configuration Editor TUI."""
 
-from pathlib import Path
 
 from rich.prompt import IntPrompt, Prompt
 

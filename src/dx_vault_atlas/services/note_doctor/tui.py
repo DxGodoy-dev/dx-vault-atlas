@@ -1,11 +1,6 @@
 from dataclasses import replace
 from typing import Any
 
-from dx_vault_atlas.services.note_doctor.validator import ValidationResult
-from dx_vault_atlas.shared.tui import (
-    WizardConfig,
-    run_wizard,
-)
 from dx_vault_atlas.services.note_creator.tui_steps import (
     AREA_STEP,
     PRIORITY_STEP,
@@ -13,6 +8,11 @@ from dx_vault_atlas.services.note_creator.tui_steps import (
     STATUS_STEP,
     TEMPLATE_STEP,
     TITLE_STEP,
+)
+from dx_vault_atlas.services.note_doctor.validator import ValidationResult
+from dx_vault_atlas.shared.tui import (
+    WizardConfig,
+    run_wizard,
 )
 
 
@@ -136,7 +136,6 @@ class DoctorTUI:
         self, steps: list[Any], missing: set[str], invalid: set[str]
     ) -> None:
         """Add dependent steps if missing or invalid."""
-
         # Map step to the field key it modifies/provides
         dependency_map = [
             (SOURCE_STEP, "source"),

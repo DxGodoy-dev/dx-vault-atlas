@@ -36,7 +36,7 @@ class NoteFactory:
                 # This assumes raw_template matches value or name
                 # Simple approach: existing logic handled it loosely.
                 # Let's rely on what main.py did: it assumed it was valid.
-                # However, for MODEL_MAP lookups we need the Enum or careful handling.
+                # However, for NoteModelRegistry lookups we need the Enum or careful handling.
                 # If it's a string like "template.md", we might need logic.
                 # But typically the wizard returns an Enum.
                 # Let's try to pass it as is if it fails.

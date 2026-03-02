@@ -6,6 +6,7 @@ from typing import Any, Protocol
 
 from pydantic_core import PydanticUndefined
 
+from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
     NoteStatus,
@@ -13,7 +14,6 @@ from dx_vault_atlas.services.note_creator.models.enums import (
 from dx_vault_atlas.services.note_doctor.core.date_resolver import (
     DateResolver,
 )
-from dx_vault_atlas.services.note_doctor.validator import MODEL_MAP
 from dx_vault_atlas.shared.logger import logger
 
 # ---------------------------------------------------------------------------
@@ -177,7 +177,7 @@ class EnumFixRule:
 
     @staticmethod
     def _fix_type(updated: dict[str, Any]) -> bool:
-        known = set(MODEL_MAP.keys()) | {"note"}
+        known = set(NoteModelRegistry.get_all().keys()) | {"note"}
 
         if "type" in updated and isinstance(updated["type"], str):
             val = updated["type"].strip().lower()
@@ -265,12 +265,12 @@ class EnumFixRule:
         changed = False
         if "status" not in updated or not updated["status"]:
             logger.debug(
-                f"[Doctor Debug] Task/Project default injecting status='to_do'"
+                "[Doctor Debug] Task/Project default injecting status='to_do'"
             )
             updated["status"] = "to_do"
             changed = True
         if "priority" not in updated:
-            logger.debug(f"[Doctor Debug] Task/Project default injecting priority=1")
+            logger.debug("[Doctor Debug] Task/Project default injecting priority=1")
             updated["priority"] = 1
             changed = True
         return changed
@@ -296,7 +296,7 @@ class DefaultsFixRule:
         if not note_type or not isinstance(note_type, str):
             return False
 
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = NoteModelRegistry.get_model(note_type)
         if not model_cls:
             return False
 
@@ -337,13 +337,13 @@ class ExtraneousFieldsFixRule:
         original: dict[str, Any],
         updated: dict[str, Any],
     ) -> bool:
-        logger.debug(f"[Doctor Debug] Fixer 'ExtraneousFieldsFixRule' start")
+        logger.debug("[Doctor Debug] Fixer 'ExtraneousFieldsFixRule' start")
 
         note_type = updated.get("type")
         if not note_type or not isinstance(note_type, str):
             return False
 
-        model_cls = MODEL_MAP.get(note_type)
+        model_cls = NoteModelRegistry.get_model(note_type)
         if not model_cls:
             return False
 

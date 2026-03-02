@@ -2,15 +2,19 @@
 
 from pathlib import Path
 
-
-from dx_vault_atlas.shared.config import get_settings
 from dx_vault_atlas.services.note_migrator.core.errors import (
     EditorCancelledError,
     FileReadError,
     FrontmatterParseError,
     MissingFieldsError,
 )
-from dx_vault_atlas.services.note_migrator.core.heuristics import TypeHeuristics
+from dx_vault_atlas.services.note_migrator.core.interfaces import (
+    IEditorService,
+    ISchemaUpgrader,
+    ITransformer,
+    ITypeHeuristics,
+    IYamlParser,
+)
 from dx_vault_atlas.services.note_migrator.models.frontmatter import FrontmatterSchema
 from dx_vault_atlas.services.note_migrator.models.migration import (
     MigrationResult,
@@ -18,18 +22,11 @@ from dx_vault_atlas.services.note_migrator.models.migration import (
 )
 from dx_vault_atlas.services.note_migrator.services.editor_buffer import (
     EditorAbortedError,
-    EditorBufferService,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
-    YamlParseError,
-    YamlParserService,
+from dx_vault_atlas.services.note_migrator.services.file_repository import (
+    FileRepository,
 )
-
-
-from dx_vault_atlas.services.note_migrator.core.schema_upgrader import SchemaUpgrader
-from dx_vault_atlas.services.note_migrator.core.transformation_service import (
-    TransformationService,
-)
+from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParseError
 
 
 class NoteMigrator:
@@ -43,30 +40,29 @@ class NoteMigrator:
 
     def __init__(
         self,
-        editor: str = "vim",
-        yaml_parser: YamlParserService | None = None,
-        editor_service: EditorBufferService | None = None,
-        heuristics: TypeHeuristics | None = None,
-        schema_upgrader: SchemaUpgrader | None = None,
-        transformation_service: TransformationService | None = None,
+        yaml_parser: IYamlParser,
+        editor_service: IEditorService,
+        heuristics: ITypeHeuristics,
+        schema_upgrader: ISchemaUpgrader,
+        transformation_service: ITransformer,
+        file_repository: FileRepository,
     ) -> None:
         """Initialize migrator with services.
 
         Args:
-            editor: System editor command for manual input.
-            yaml_parser: Optional injected service.
-            editor_service: Optional injected service.
-            heuristics: Optional injected service.
-            schema_upgrader: Optional injected service.
-            transformation_service: Optional injected service.
+            yaml_parser: Yaml parser service.
+            editor_service: Editor buffer service.
+            heuristics: Type heuristics service.
+            schema_upgrader: Schema upgrader service.
+            transformation_service: Transformation service.
+            file_repository: File repository service for I/O operations.
         """
-        self.yaml_parser = yaml_parser or YamlParserService()
-        self.editor_service = editor_service or EditorBufferService(editor=editor)
-        self.heuristics = heuristics or TypeHeuristics()
-        self.schema_upgrader = schema_upgrader or SchemaUpgrader()
-        self.transformation_service = transformation_service or TransformationService(
-            settings=get_settings()
-        )
+        self.yaml_parser = yaml_parser
+        self.editor_service = editor_service
+        self.heuristics = heuristics
+        self.schema_upgrader = schema_upgrader
+        self.transformation_service = transformation_service
+        self.file_repository = file_repository
 
     def migrate(self, note_path: Path) -> MigrationResult:
         """Migrate a single note file.
@@ -84,7 +80,7 @@ class NoteMigrator:
             EditorCancelledError: If user cancels editor input.
         """
         try:
-            content = note_path.read_text(encoding="utf-8")
+            content = self.file_repository.read_text(note_path)
         except (OSError, UnicodeDecodeError) as e:
             raise FileReadError(note_path, f"Cannot read file: {e}") from e
 
@@ -106,31 +102,51 @@ class NoteMigrator:
             frontmatter.type = detected_type
 
         # Determine missing fields
-        missing = self._get_missing_fields(frontmatter.model_dump(), detected_type)
+        dump_kwargs = {"exclude_unset": False, "exclude_none": False}
+        missing = self._get_missing_fields(
+            frontmatter.model_dump(**dump_kwargs), detected_type, note_path
+        )
+
+        merged_frontmatter = None
 
         # If missing fields or no type, prompt user
         if missing or not (frontmatter.type or detected_type):
             try:
                 updated_dict = self.editor_service.prompt_user(
                     original_content=content,
-                    frontmatter=frontmatter.model_dump(),
+                    frontmatter=frontmatter.model_dump(**dump_kwargs),
                     missing_fields=missing,
                 )
+                # the updated_dict has all the fields, including those from 'model_config={"extra": "allow"}'
                 frontmatter = FrontmatterSchema.model_validate(updated_dict)
+                # Keep merged dict directly to preserve any dynamically passed fields
+                # that were missing on the model validation
+                merged_frontmatter = {
+                    **updated_dict,
+                    **frontmatter.model_dump(exclude_unset=False),
+                }
                 # Re-detect type after user input
                 detected_type = frontmatter.type or detected_type
             except EditorAbortedError as e:
                 raise EditorCancelledError(note_path, str(e)) from e
 
         # Final validation
+        final_valid_frontmatter = (
+            merged_frontmatter
+            if merged_frontmatter is not None
+            else frontmatter.model_dump(**dump_kwargs)
+        )
+
         final_missing = self._get_missing_fields(
-            frontmatter.model_dump(), detected_type
+            final_valid_frontmatter,
+            detected_type,
+            note_path,
         )
         if final_missing:
             raise MissingFieldsError(note_path, final_missing)
 
         # Write migrated note (schema_upgrader handles field cleanup)
-        self._write_migrated_note(note_path, frontmatter.model_dump(), parsed.body)
+        self._write_migrated_note(note_path, final_valid_frontmatter, parsed.body)
 
         return MigrationResult(
             file_path=note_path,
@@ -142,16 +158,20 @@ class NoteMigrator:
         self,
         frontmatter: dict[str, str | int | list[str] | None],
         note_type: str | None,
+        note_path: Path,  # Added note_path argument
     ) -> list[str]:
         """Determine which required fields are missing."""
         # If no type, we need it first
         if not note_type:
             return ["type"] if "type" not in frontmatter else []
 
-        from dx_vault_atlas.services.note_migrator.validator import MODEL_MAP
+        from dx_vault_atlas.core.registry import NoteModelRegistry
 
-        required = ["title", "type"]
-        if model_cls := MODEL_MAP.get(note_type):
+        # The original `note_type` argument is used here, not re-detected.
+        # The `_detect_type` method and `return False` are not part of this change.
+        # The `required = ["title", "type"]` line is removed as per the snippet.
+        required = []  # Initialize required to an empty list
+        if model_cls := NoteModelRegistry.get_model(note_type):
             required = [
                 field.alias or name
                 for name, field in model_cls.model_fields.items()
@@ -184,4 +204,4 @@ class NoteMigrator:
         upgraded_frontmatter = self.schema_upgrader.upgrade(dict(frontmatter))
 
         yaml_content = self.yaml_parser.serialize_frontmatter(upgraded_frontmatter)
-        note_path.write_text(yaml_content + body, encoding="utf-8")
+        self.file_repository.write_text(note_path, yaml_content + body)

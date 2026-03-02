@@ -1,3 +1,4 @@
+# ruff: noqa
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -18,6 +19,12 @@ MOCK_INPUTS = {
         "type": "info",
         "source": "Other",
         "priority": "1",
+    },
+    "05_extra_fields.md": {
+        "source": "Other",
+        "priority": 1,
+        "area": "Personal",
+        "status": "active",
     },
     "06_missing_required.md": {"area": "Personal"},
     "08_empty_file.md": {
@@ -58,6 +65,20 @@ class MockEditorBuffer:
         return frontmatter
 
 
+from dx_vault_atlas.services.note_migrator.services.file_repository import (
+    LocalFileRepository,
+)
+from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParserService
+from dx_vault_atlas.services.note_migrator.core.heuristics import TypeHeuristics
+from dx_vault_atlas.services.note_migrator.core.schema_upgrader import SchemaUpgrader
+from dx_vault_atlas.services.note_migrator.core.transformation_service import (
+    TransformationService,
+)
+from dx_vault_atlas.shared.config import GlobalConfig
+
+# Import note models to populate the NoteModelRegistry
+import dx_vault_atlas.services.note_creator.models.note  # noqa: F401
+
 CURRENT_SCENARIO = ""
 
 
@@ -83,27 +104,36 @@ def run_tests():
 
         status = "UNKNOWN"
         try:
-            with (
-                patch(
-                    "dx_vault_atlas.services.note_migrator.core.migrator.EditorBufferService",
-                    MockEditorBuffer,
-                ),
-                patch(
-                    "dx_vault_atlas.services.note_migrator.core.migrator.get_settings"
-                ) as mock_get_settings,
-            ):
-                # Mock settings with dummy paths
-                mock_settings = MagicMock()
-                mock_settings.vault_path = Path("/tmp/vault")
-                mock_settings.vault_inbox = Path("/tmp/vault/Inbox")
-                mock_get_settings.return_value = mock_settings
+            # Setup real services with mock file repo pointing to temp files
+            yaml_parser = YamlParserService()
+            editor_service = MockEditorBuffer()
+            heuristics = TypeHeuristics()
+            schema_upgrader = SchemaUpgrader()
 
-                migrator = NoteMigrator()
-                try:
-                    res = migrator.migrate(temp_file)
-                    status = "SUCCESS"
-                except Exception as e:
-                    status = f"ERROR: {e.__class__.__name__}: {e}"
+            vault_p = Path("/tmp/vault")
+            vault_inbox_p = Path("/tmp/vault/Inbox")
+            vault_inbox_p.mkdir(parents=True, exist_ok=True)
+
+            mock_settings = GlobalConfig(vault_path=vault_p, vault_inbox=vault_inbox_p)
+            transformer = TransformationService(mock_settings)
+
+            file_repo = (
+                LocalFileRepository()
+            )  # It will use the real file system for test temp files
+
+            migrator = NoteMigrator(
+                yaml_parser=yaml_parser,
+                editor_service=editor_service,
+                heuristics=heuristics,
+                schema_upgrader=schema_upgrader,
+                transformation_service=transformer,
+                file_repository=file_repo,
+            )
+            try:
+                res = migrator.migrate(temp_file)
+                status = "SUCCESS"
+            except Exception as e:
+                status = f"ERROR: {e.__class__.__name__}: {e}"
 
             # Validation logic
             final_content = temp_file.read_text(encoding="utf-8")
@@ -156,6 +186,7 @@ def run_tests():
                     )
 
             elif "06_missing_required" in CURRENT_SCENARIO:
+                # El Prompt ya llenó el área "Personal" a través de MockEditorBuffer
                 if status == "SUCCESS" and "area: Personal" in final_content:
                     results[CURRENT_SCENARIO] = "PASS"
                 else:

@@ -7,7 +7,6 @@ Refactored to comply with:
 
 import json
 import sys
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -21,8 +20,8 @@ from dx_vault_atlas.shared.config import (
     ConfigNotFoundError,
     get_config_manager,
 )
-from dx_vault_atlas.shared.tui.config_wizard import run_setup_wizard
 from dx_vault_atlas.shared.logger import logger  # Skill 07
+from dx_vault_atlas.shared.tui.config_wizard import run_setup_wizard
 
 # Setup Rich for unhandled exceptions in TUI mode
 install_rich_traceback(show_locals=False)
@@ -174,11 +173,10 @@ def note_doctor(
     ),
 ) -> None:
     """Interactive doctor to fix invalid notes."""
-    from dx_vault_atlas.services.note_doctor.main import main
+    from dx_vault_atlas.services.note_doctor.app import create_app
 
     # Unused imports removed
     from dx_vault_atlas.shared.config import get_settings
-    from dx_vault_atlas.services.note_doctor.app import create_app
     from dx_vault_atlas.shared.logger import enable_debug_logging
 
     if debug_mode:
