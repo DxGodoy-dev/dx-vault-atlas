@@ -3,32 +3,17 @@
 from pathlib import Path
 from typing import Any
 
+from dx_vault_atlas.services.note_creator.core.registry import get_model
 from dx_vault_atlas.services.note_creator.defaults import DEFAULT_TAGS
 from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
-from dx_vault_atlas.services.note_creator.models.note import (
-    BaseNote,
-    InfoNote,
-    MocNote,
-    ProjectNote,
-    RefNote,
-    TaskNote,
-)
-
-# Mapping of template enums to Pydantic models
-MODEL_MAP: dict[NoteTemplate, type[BaseNote]] = {
-    NoteTemplate.PROJECT: ProjectNote,
-    NoteTemplate.TASK: TaskNote,
-    NoteTemplate.INFO: InfoNote,
-    NoteTemplate.REF: RefNote,
-    NoteTemplate.MOC: MocNote,
-}
+from dx_vault_atlas.services.note_creator.models.note import AnyNote, BaseNote
 
 
 class NoteFactory:
     """Factory for creating note instances."""
 
     @staticmethod
-    def create_note(data: dict[str, Any]) -> BaseNote:
+    def create_note(data: dict[str, Any]) -> AnyNote:
         """Create a note instance from dictionary data.
 
         Args:
@@ -68,7 +53,7 @@ class NoteFactory:
         type_str = (
             Path(str(raw_template)).stem
             if isinstance(raw_template, str)
-            else Path(raw_template.value).stem
+            else (Path(raw_template.value).stem if raw_template is not None else "")
         )
 
         escaped_title = title.replace('"', '\\"')
@@ -91,5 +76,5 @@ class NoteFactory:
             note_data["status"] = status
 
         # Instantiate
-        note_class = MODEL_MAP.get(template_enum, BaseNote)
+        note_class = get_model(template_enum, default=BaseNote)
         return note_class(**note_data)

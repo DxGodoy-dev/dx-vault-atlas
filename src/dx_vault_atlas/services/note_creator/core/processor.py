@@ -1,13 +1,13 @@
 """Note processor for rendering and writing notes."""
 
+from dx_vault_atlas.services.note_creator.core.ports import ITemplatingService
 from dx_vault_atlas.services.note_creator.models.note import BaseNote
-from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 
 
 class NoteProcessor:
     """Processes notes by rendering templates and writing to disk."""
 
-    def __init__(self, templating_service: TemplatingService) -> None:
+    def __init__(self, templating_service: ITemplatingService) -> None:
         """Initialize with templating service.
 
         Args:

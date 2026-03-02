@@ -4,11 +4,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from dx_vault_atlas.services.note_creator.core.registry import register_model
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
     NoteSource,
     NoteStatus,
+    NoteTemplate,
     Priority,
 )
 
@@ -41,6 +43,7 @@ class BaseNote(BaseModel):
         return str(v)
 
 
+@register_model(NoteTemplate.MOC)
 class MocNote(BaseNote):
     """Note model for Maps of Content (MOC)."""
 
@@ -48,6 +51,7 @@ class MocNote(BaseNote):
     up: str | None = None
 
 
+@register_model(NoteTemplate.REF)
 class RefNote(BaseNote):
     """Reference note with minimal fields."""
 
@@ -67,6 +71,7 @@ class StatusNote(RankedNote):
     status: NoteStatus
 
 
+@register_model(NoteTemplate.INFO)
 class InfoNote(StatusNote):
     """Information note with status."""
 
@@ -82,6 +87,7 @@ class WorkflowNote(StatusNote):
     area: NoteArea = Field(description="Note category (Personal or Work)")
 
 
+@register_model(NoteTemplate.PROJECT)
 class ProjectNote(WorkflowNote):
     """Note model for projects with dates and outcome."""
 
@@ -90,7 +96,11 @@ class ProjectNote(WorkflowNote):
     outcome: int | None = None
 
 
+@register_model(NoteTemplate.TASK)
 class TaskNote(WorkflowNote):
     """Note model for tasks with deadline."""
 
     deadline: datetime | None = None
+
+
+AnyNote = ProjectNote | TaskNote | InfoNote | RefNote | MocNote | BaseNote

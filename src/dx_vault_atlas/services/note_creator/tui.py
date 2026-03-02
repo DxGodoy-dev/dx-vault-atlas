@@ -3,15 +3,11 @@
 from typing import Any
 
 from dx_vault_atlas.services.note_creator.tui_steps import NOTE_CREATOR_STEPS
-from dx_vault_atlas.shared.config import GlobalConfig
 from dx_vault_atlas.shared.tui import WizardConfig, run_wizard
 
 
-def run_tui(settings: GlobalConfig) -> dict[str, Any] | None:
+def run_tui() -> dict[str, Any] | None:
     """Run the Note Creator TUI and return collected data.
-
-    Args:
-        settings: Application settings.
 
     Returns:
         Collected wizard data or None if cancelled.

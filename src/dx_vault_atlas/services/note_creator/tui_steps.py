@@ -1,5 +1,6 @@
 """Wizard steps for Note Creator TUI."""
 
+from dx_vault_atlas.services.note_creator.core.registry import has_field
 from dx_vault_atlas.services.note_creator.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
@@ -37,9 +38,7 @@ SOURCE_STEP = WizardStep(
     step_type="select",
     enum_cls=NoteSource,
     default_value=DEFAULT_SOURCE,
-    condition=lambda data: (
-        data.get("template") not in (NoteTemplate.MOC, NoteTemplate.REF)
-    ),
+    condition=lambda data: has_field(data.get("template"), "source"),
 )
 
 PRIORITY_STEP = WizardStep(
@@ -48,9 +47,7 @@ PRIORITY_STEP = WizardStep(
     step_type="select",
     enum_cls=Priority,
     default_value=DEFAULT_PRIORITY,
-    condition=lambda data: (
-        data.get("template") not in (NoteTemplate.MOC, NoteTemplate.REF)
-    ),
+    condition=lambda data: has_field(data.get("template"), "priority"),
 )
 
 AREA_STEP = WizardStep(
@@ -59,9 +56,7 @@ AREA_STEP = WizardStep(
     step_type="select",
     enum_cls=NoteArea,
     default_value=DEFAULT_AREA,
-    condition=lambda data: (
-        data.get("template") in (NoteTemplate.TASK, NoteTemplate.PROJECT)
-    ),
+    condition=lambda data: has_field(data.get("template"), "area"),
 )
 
 STATUS_STEP = WizardStep(
@@ -70,9 +65,7 @@ STATUS_STEP = WizardStep(
     step_type="select",
     enum_cls=NoteStatus,
     default_value=NoteStatus.TO_DO,
-    condition=lambda data: (
-        data.get("template") in (NoteTemplate.PROJECT, NoteTemplate.TASK)
-    ),
+    condition=lambda data: has_field(data.get("template"), "status"),
 )
 
 # Pre-built step sequences

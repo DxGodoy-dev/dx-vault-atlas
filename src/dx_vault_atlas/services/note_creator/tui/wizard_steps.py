@@ -4,6 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from dx_vault_atlas.services.note_creator.core.registry import has_field
 from dx_vault_atlas.services.note_creator.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
@@ -39,16 +40,6 @@ def _get_context_info() -> dict[str, Any]:
     }
 
 
-# Steps map by template type:
-# MOC: None | INFO: Workflow | TASK/PROJECT: Workflow + Context
-_STEPS_MAP: dict[NoteTemplate, list[Callable[[], dict[str, Any]]]] = {
-    NoteTemplate.MOC: [],
-    NoteTemplate.INFO: [_get_workflow_info],
-    NoteTemplate.TASK: [_get_workflow_info, _get_context_info],
-    NoteTemplate.PROJECT: [_get_workflow_info, _get_context_info],
-}
-
-
 def get_note_wizard_data(raw_title: str) -> dict[str, Any]:
     """Run the interactive wizard to collect note data.
 
@@ -72,8 +63,15 @@ def get_note_wizard_data(raw_title: str) -> dict[str, Any]:
         "template_type": template,  # Keep track of template for factory
     }
 
-    # 3. Execute dynamic steps
-    steps = _STEPS_MAP.get(template, [])
+    # 3. Execute dynamic steps based on model fields
+    steps: list[Callable[[], dict[str, Any]]] = []
+
+    if has_field(template, "source") or has_field(template, "priority"):
+        steps.append(_get_workflow_info)
+
+    if has_field(template, "area"):
+        steps.append(_get_context_info)
+
     for step_func in steps:
         note_data.update(step_func())
 

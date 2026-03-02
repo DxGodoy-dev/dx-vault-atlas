@@ -1,17 +1,20 @@
 """Note Creator application orchestrator."""
 
-import tempfile
-from contextlib import suppress
 from pathlib import Path
 
 from dx_vault_atlas.services.note_creator.core.factory import NoteFactory
+from dx_vault_atlas.services.note_creator.core.ports import (
+    INoteProcessor,
+    INoteWriter,
+    IOutputPresenter,
+)
 from dx_vault_atlas.services.note_creator.core.processor import NoteProcessor
 from dx_vault_atlas.services.note_creator.core.writer import NoteWriter
+from dx_vault_atlas.services.note_creator.services.editor import EditorService
 from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 from dx_vault_atlas.services.note_creator.tui import run_tui
 from dx_vault_atlas.services.note_creator.utils.title_normalizer import TitleNormalizer
 from dx_vault_atlas.shared.config import GlobalConfig
-from dx_vault_atlas.shared.core.system_editor import SystemEditor
 from dx_vault_atlas.shared.logger import logger
 from dx_vault_atlas.shared.tui.result_app import run_result_tui
 
@@ -28,22 +31,28 @@ class NoteCreatorApp:
 
     def __init__(
         self,
-        settings: GlobalConfig,
-        processor: NoteProcessor,
-        writer: NoteWriter,
+        vault_inbox: Path,
+        processor: INoteProcessor,
+        writer: INoteWriter,
+        editor: EditorService,
+        error_presenter: IOutputPresenter,
         show_header: bool = True,
     ) -> None:
         """Initialize with dependencies.
 
         Args:
-            settings: Application configuration.
+            vault_inbox: Directory where new notes will be created.
             processor: Note processor service.
             writer: Service to write notes to disk.
+            editor: Service to handle external editor interactions.
+            error_presenter: Service to handle error UI presentation.
             show_header: Whether to show header panel.
         """
-        self.settings = settings
+        self.vault_inbox = vault_inbox
         self.processor = processor
         self.writer = writer
+        self.editor = editor
+        self.error_presenter = error_presenter
         self.show_header = show_header
 
     def run(self) -> None:
@@ -53,7 +62,7 @@ class NoteCreatorApp:
         while True:
             # 1. Wizard TUI
             # Returns dict with collected data or None if cancelled
-            wizard_data = run_tui(self.settings)
+            wizard_data = run_tui()
 
             if not wizard_data:
                 # User cancelled or quit
@@ -61,13 +70,13 @@ class NoteCreatorApp:
 
             # 2. Editor (External Process)
             # Opens default editor for body content
-            body_content = self._get_editor_content()
+            body_content = self.editor.get_editor_content()
 
             # 3. Create Note
             try:
                 title = str(wizard_data["title"])
                 safe_title = TitleNormalizer.normalize(title)
-                output_path = self.settings.vault_inbox / f"{safe_title}.md"
+                output_path = self.vault_inbox / f"{safe_title}.md"
 
                 note_instance = NoteFactory.create_note(wizard_data)
 
@@ -84,17 +93,8 @@ class NoteCreatorApp:
             except Exception as e:
                 logger.exception(f"Error creating note: {e}")
 
-                # Show error to user via console
-                from dx_vault_atlas.services.note_creator.services.console import (
-                    console,
-                )
-
-                console.print(f"[bold red]Error creating note:[/bold red] {e}")
-
-                # Give user a chance to read the error before returning
-                from rich.prompt import Prompt
-
-                Prompt.ask("\n[dim]Press Enter to return to main menu...[/dim]")
+                # Show error to user via injected presenter
+                self.error_presenter.present_error(e)
 
                 return
 
@@ -105,21 +105,18 @@ class NoteCreatorApp:
             if action != "retry":
                 break
 
-    def _get_editor_content(self) -> str:
-        """Open temporary file in editor and return content."""
-        with tempfile.NamedTemporaryFile(suffix=".md", delete=False) as tf:
-            temp_path = tf.name
 
-        try:
-            # Open editor (blocks until closed)
-            SystemEditor.open_file(temp_path)
+class DefaultErrorPresenter:
+    """Default error presentation using rich console."""
 
-            # Read content
-            return Path(temp_path).read_text(encoding="utf-8")
-        finally:
-            # Cleanup
-            with suppress(OSError):
-                Path(temp_path).unlink()
+    def present_error(self, error: Exception) -> None:
+        """Display an error to the user."""
+        from rich.prompt import Prompt
+
+        from dx_vault_atlas.services.note_creator.services.console import console
+
+        console.print(f"[bold red]Error creating note:[/bold red] {error}")
+        Prompt.ask("\n[dim]Press Enter to return to main menu...[/dim]")
 
 
 def create_app(settings: GlobalConfig, show_header: bool = True) -> NoteCreatorApp:
@@ -135,4 +132,12 @@ def create_app(settings: GlobalConfig, show_header: bool = True) -> NoteCreatorA
     template_service = TemplatingService()
     processor = NoteProcessor(template_service)
     writer = NoteWriter()
-    return NoteCreatorApp(settings, processor, writer, show_header)
+    editor = EditorService()
+    return NoteCreatorApp(
+        vault_inbox=settings.vault_inbox,
+        processor=processor,
+        writer=writer,
+        editor=editor,
+        error_presenter=DefaultErrorPresenter(),
+        show_header=show_header,
+    )
