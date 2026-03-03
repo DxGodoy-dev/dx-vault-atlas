@@ -13,7 +13,7 @@ from dx_vault_atlas.services.note_migrator.services.file_repository import (
     FileRepository,
 )
 from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
-    ParsedYaml,
+    ParsedNote,
     YamlParseError,
 )
 from dx_vault_atlas.shared.config import GlobalConfig
@@ -132,7 +132,7 @@ class MigratorApp:
 
     def _read_and_parse_note(
         self, file_path: Path, debug_mode: bool
-    ) -> ParsedYaml | None:
+    ) -> ParsedNote | None:
         """Read and parse note content, handling errors."""
         try:
             content = self.file_repo.read_text(file_path)
