@@ -31,6 +31,7 @@ class NoteCreatorApp:
 
     def __init__(
         self,
+        settings: GlobalConfig,
         vault_inbox: Path,
         processor: INoteProcessor,
         writer: INoteWriter,
@@ -48,6 +49,7 @@ class NoteCreatorApp:
             error_presenter: Service to handle error UI presentation.
             show_header: Whether to show header panel.
         """
+        self.settings = settings
         self.vault_inbox = vault_inbox
         self.processor = processor
         self.writer = writer
@@ -134,6 +136,7 @@ def create_app(settings: GlobalConfig, show_header: bool = True) -> NoteCreatorA
     writer = NoteWriter()
     editor = EditorService()
     return NoteCreatorApp(
+        settings=settings,
         vault_inbox=settings.vault_inbox,
         processor=processor,
         writer=writer,

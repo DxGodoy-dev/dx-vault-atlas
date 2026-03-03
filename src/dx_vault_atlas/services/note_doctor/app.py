@@ -51,6 +51,7 @@ class DoctorApp:
         settings: GlobalConfig,
         cli: DoctorCLI,
         io_service: NoteIOService,
+        model_map: dict[str, Any],
     ) -> None:
         """Initialise DoctorApp with dependencies."""
         self.settings = settings
@@ -76,7 +77,7 @@ class DoctorApp:
             ]
         )
         self.patcher = FrontmatterPatcher()
-        self.tui = DoctorTUI()
+        self.tui = DoctorTUI(model_map=model_map)
 
     # -- public API ---------------------------------------------------------
 
@@ -498,6 +499,10 @@ class DoctorApp:
 
 def create_app(settings: GlobalConfig) -> DoctorApp:
     """Create DoctorApp instance."""
+    # Ensure models are registered
+    import dx_vault_atlas.services.note_creator.models.note  # noqa: F401
+    from dx_vault_atlas.core.registry import NoteModelRegistry
+
     yaml_parser = YamlParserService()
     io_service = NoteIOService(yaml_parser)
     cli = DoctorCLI()
@@ -506,4 +511,5 @@ def create_app(settings: GlobalConfig) -> DoctorApp:
         settings=settings,
         cli=cli,
         io_service=io_service,
+        model_map=NoteModelRegistry.get_all(),
     )
