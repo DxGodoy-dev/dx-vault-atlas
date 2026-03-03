@@ -6,4 +6,5 @@ tags: {{ tags }}
 created: {{ created }}
 updated: {{ updated }}
 type: {{ type }}
+up: "[[ ]]"
 ---

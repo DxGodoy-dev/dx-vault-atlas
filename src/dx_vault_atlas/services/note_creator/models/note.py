@@ -28,6 +28,7 @@ class BaseNote(BaseModel):
     created: datetime = Field(default_factory=datetime.now)
     updated: datetime = Field(default_factory=datetime.now)
     note_type: str = Field(..., alias="type", description="Note type")
+    up: str | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -50,7 +51,6 @@ class MocNote(BaseNote):
     """Note model for Maps of Content (MOC)."""
 
     level: int | None = None
-    up: str | None = None
 
 
 @register_model(NoteTemplate.REF)

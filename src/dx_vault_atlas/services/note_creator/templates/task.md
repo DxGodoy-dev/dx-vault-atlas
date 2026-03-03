@@ -10,6 +10,7 @@ priority: {{ priority }}
 area: {{ area }}
 status: {{ status }}
 deadline: 
+up: "[[ ]]"
 ---
 
 

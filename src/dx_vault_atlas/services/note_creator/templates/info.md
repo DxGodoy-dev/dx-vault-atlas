@@ -9,6 +9,7 @@ type: {{ type }}
 source: {{ source }}
 priority: {{ priority }}
 status: {{ status }}
+up: "[[ ]]"
 ---
 
 

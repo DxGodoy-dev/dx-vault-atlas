@@ -14,6 +14,7 @@ start:
 completed: 
 deadline: 
 outcome: "" 
+up: "[[ ]]"
 ---
 
 
