@@ -18,14 +18,11 @@ class FrontmatterPatcher:
         "aliases",
         "tags",
         # Type specific (Ranked, Workflow, Project, Task, MOC)
-        "source",
         "priority",
         "status",
         "area",
-        "outcome",
         "start_date",
         "end_date",
-        "deadline",
         "level",
         "up",
     ]
@@ -80,6 +77,26 @@ class FrontmatterPatcher:
                 else:
                     # fallback
                     frontmatter[target_key] = [str(value)]
+
+            elif target_key == "integrity_aliases":
+                title_val = frontmatter.get("title")
+                action_val = value.name if hasattr(value, "name") else value
+                current_aliases = frontmatter.get("aliases", [])
+                if not isinstance(current_aliases, list):
+                    current_aliases = (
+                        []
+                        if not isinstance(current_aliases, str)
+                        else [current_aliases]
+                    )
+
+                if action_val == "ADD":
+                    if title_val and title_val not in current_aliases:
+                        current_aliases.append(title_val)
+                    frontmatter["aliases"] = current_aliases
+                elif action_val == "REPLACE":
+                    if title_val:
+                        frontmatter["aliases"] = [title_val]
+                # KEEP action does nothing
 
             else:
                 # Handle Enum values (Wizard returns Enum members)

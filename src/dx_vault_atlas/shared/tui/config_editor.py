@@ -1,6 +1,5 @@
 """Configuration Editor TUI."""
 
-
 from rich.prompt import IntPrompt, Prompt
 
 from dx_vault_atlas.shared import console as ui
@@ -222,7 +221,7 @@ class ConfigEditor:
 
     def _add_value_mapping(self, config: GlobalConfig) -> None:
         """Add a new value mapping."""
-        field = Prompt.ask("Field name (e.g. source)")
+        field = Prompt.ask("Field name (e.g. status)")
         if not field:
             return
         old_val = Prompt.ask(f"Old value to replace in '{field}'")

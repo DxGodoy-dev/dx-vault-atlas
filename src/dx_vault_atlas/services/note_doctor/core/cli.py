@@ -5,7 +5,6 @@ from typing import Any
 from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     Priority,
 )
 from dx_vault_atlas.services.note_doctor.validator import (
@@ -16,7 +15,6 @@ from dx_vault_atlas.shared import console as ui
 # Field → selectable options (used in CLI debug mode)
 _ENUM_OPTIONS: dict[str, list[Any]] = {
     "type": list(NoteModelRegistry.get_all().keys()),
-    "source": [e.value for e in NoteSource],
     "area": [e.value for e in NoteArea],
     "priority": [e.value for e in Priority],
 }
@@ -163,7 +161,24 @@ class DoctorCLI:
         )
         if needs_aliases:
             existing = result.frontmatter.get("title", "").strip('"')
-            if existing:
+
+            if "integrity_aliases" in result.invalid_fields:
+                ui.console.print(
+                    f"[yellow]Title '{existing}' is missing from aliases.[/yellow]"
+                )
+                options = [
+                    "Add title to aliases",
+                    "Keep current aliases",
+                    "Replace aliases with title only",
+                ]
+                sel = self._gather_enum_selection("Integrity Aliases Action", options)
+                if sel == "Add title to aliases":
+                    fixes["integrity_aliases"] = "ADD"
+                elif sel == "Replace aliases with title only":
+                    fixes["integrity_aliases"] = "REPLACE"
+                else:
+                    fixes["integrity_aliases"] = "KEEP"
+            elif existing:
                 fixes["aliases"] = [existing]
 
     def _handle_field_fixes(

@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     NoteStatus,
     Priority,
 )
@@ -22,7 +21,6 @@ class FrontmatterSchema(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
-    source: NoteSource | str | None = None
     priority: Priority | int | None = None
     area: NoteArea | str | None = None
     status: NoteStatus | str | None = None

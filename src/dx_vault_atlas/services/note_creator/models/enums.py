@@ -23,17 +23,6 @@ class NoteStatus(StrEnum):
     TO_READ = "to_read"
 
 
-class NoteSource(StrEnum):
-    """Source of the note content."""
-
-    IA = "ia"
-    DOCUMENTATION = "documentation"
-    RESEARCH = "research"
-    YOUTUBE = "youtube"
-    ME = "me"
-    OTHER = ""
-
-
 class NoteTemplate(StrEnum):
     """Available note templates."""
 

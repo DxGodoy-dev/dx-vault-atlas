@@ -6,7 +6,6 @@ tags: {{ tags }}
 created: {{ created }}
 updated: {{ updated }}
 type: {{ type }}
-source: {{ source }}
 priority: {{ priority }}
 status: {{ status }}
 up: "[[ ]]"

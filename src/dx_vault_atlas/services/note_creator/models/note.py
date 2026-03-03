@@ -9,11 +9,14 @@ from dx_vault_atlas.services.note_creator.core.registry import register_model
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     NoteStatus,
     NoteTemplate,
     Priority,
 )
+
+# =============================================================================
+# Base Models
+# =============================================================================
 
 
 class BaseNote(BaseModel):
@@ -45,33 +48,24 @@ class BaseNote(BaseModel):
         return str(v)
 
 
-@register_model(NoteTemplate.MOC)
-@register_note_type("moc")
-class MocNote(BaseNote):
-    """Note model for Maps of Content (MOC)."""
+class StatusNote(BaseNote):
+    """Base note for status-tracking with priority."""
 
-    level: int | None = None
-
-
-@register_model(NoteTemplate.REF)
-@register_note_type("ref")
-class RefNote(BaseNote):
-    """Reference note with minimal fields."""
-
-    pass
-
-
-class RankedNote(BaseNote):
-    """Notes with source and priority fields."""
-
-    source: NoteSource | str
     priority: Priority
-
-
-class StatusNote(RankedNote):
-    """Base note for status-tracking."""
-
     status: NoteStatus
+
+
+class WorkflowNote(StatusNote):
+    """Notes with status and area fields."""
+
+    # Override with Enum for workflow notes
+    status: NoteStatus = Field(default=NoteStatus.TO_DO)
+    area: NoteArea = Field(description="Note category (Personal or Work)")
+
+
+# =============================================================================
+# Concrete Models
+# =============================================================================
 
 
 @register_model(NoteTemplate.INFO)
@@ -83,30 +77,37 @@ class InfoNote(StatusNote):
     status: NoteStatus = Field(default=NoteStatus.TO_READ)
 
 
-class WorkflowNote(StatusNote):
-    """Notes with status and area fields."""
+@register_model(NoteTemplate.MOC)
+@register_note_type("moc")
+class MocNote(BaseNote):
+    """Note model for Maps of Content (MOC)."""
 
-    # Override with Enum for workflow notes
-    status: NoteStatus = Field(default=NoteStatus.TO_DO)
-    area: NoteArea = Field(description="Note category (Personal or Work)")
+    level: int | None = None
 
 
 @register_model(NoteTemplate.PROJECT)
 @register_note_type("project")
 class ProjectNote(WorkflowNote):
-    """Note model for projects with dates and outcome."""
+    """Note model for projects with dates."""
 
     start_date: datetime | None = None
     end_date: datetime | None = None
-    outcome: int | None = None
+
+
+@register_model(NoteTemplate.REF)
+@register_note_type("ref")
+class RefNote(BaseNote):
+    """Reference note with minimal fields."""
+
+    pass
 
 
 @register_model(NoteTemplate.TASK)
 @register_note_type("task")
 class TaskNote(WorkflowNote):
-    """Note model for tasks with deadline."""
+    """Note model for tasks."""
 
-    deadline: datetime | None = None
+    pass
 
 
 AnyNote = ProjectNote | TaskNote | InfoNote | RefNote | MocNote | BaseNote

@@ -68,12 +68,19 @@ class DoctorApp:
         self.defaults_rule = DefaultsFixRule()
         self.extraneous_rule = ExtraneousFieldsFixRule()
 
+        from dx_vault_atlas.services.note_doctor.core.fixer import (
+            IntegrityAliasesFixRule,
+        )
+
+        self.integrity_aliases_rule = IntegrityAliasesFixRule()
+
         self.fixer = NoteFixer(
             rules=[
                 self.date_rule,
                 self.enum_rule,
                 self.defaults_rule,
                 self.extraneous_rule,
+                self.integrity_aliases_rule,
             ]
         )
         self.patcher = FrontmatterPatcher()
@@ -191,16 +198,12 @@ class DoctorApp:
                 "[Doctor Debug] --------------------------------------------------"
             )
             logger.debug(f"[Doctor Debug] Validating: {note_path.name}")
-            logger.debug(
-                "[DEBUG TRACE] app._classify_note Start | 'source' in file? (we will see after parse)"
-            )
+            logger.debug("[DEBUG TRACE] app._classify_note Start")
 
         result = self.validator.validate(note_path)
 
         if debug_mode and not result.error:
-            logger.debug(
-                f"[DEBUG TRACE] app._classify_note After Validator | 'source' in fm: {'source' in result.frontmatter}"
-            )
+            logger.debug("[DEBUG TRACE] app._classify_note After Validator")
 
         if result.error:
             # File unreadable or gross YAML error - can't auto-fix
@@ -215,7 +218,7 @@ class DoctorApp:
 
         if debug_mode:
             print(
-                f"!!! DOCTOR DEBUG: _classify_note | type before fixer={result.frontmatter.get('type')} | source before={result.frontmatter.get('source')} | path={note_path.name}"
+                f"!!! DOCTOR DEBUG: _classify_note | type before fixer={result.frontmatter.get('type')} | path={note_path.name}"
             )
         has_changes, fm_final, body = self.fixer.fix(
             note_path,
@@ -242,10 +245,10 @@ class DoctorApp:
 
         if debug_mode:
             print(
-                f"!!! DOCTOR DEBUG: _classify_note | type after mappings={fm_final.get('type')} | source after mappings={fm_final.get('source')} | has_changes={has_changes}"
+                f"!!! DOCTOR DEBUG: _classify_note | type after mappings={fm_final.get('type')} | has_changes={has_changes}"
             )
             logger.debug(
-                f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes} | 'source' in fm_final: {'source' in fm_final}"
+                f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes}"
             )
 
         if result.is_valid and not has_changes:
@@ -390,9 +393,7 @@ class DoctorApp:
 
             if debug_mode:
                 logger.debug(f"CLI prompt | {file_path.name}")
-                logger.debug(
-                    f"[DEBUG TRACE] app._process_note Before Fix Gather | 'source' in fm: {'source' in frontmatter}"
-                )
+                logger.debug("[DEBUG TRACE] app._process_note Before Fix Gather")
                 fixes = self.cli.gather_fixes(result)
             else:
                 fixes = self.tui.gather_fixes(result)
@@ -417,9 +418,7 @@ class DoctorApp:
                 fixes,
             )
             if debug_mode:
-                logger.debug(
-                    f"[DEBUG TRACE] app._process_note After Patcher | 'source' in fm: {'source' in frontmatter}"
-                )
+                logger.debug("[DEBUG TRACE] app._process_note After Patcher")
 
             # Strip fields not allowed by the note's Pydantic model
             original_for_rules = frontmatter.copy()
@@ -430,7 +429,7 @@ class DoctorApp:
             )
             if debug_mode:
                 logger.debug(
-                    f"[DEBUG TRACE] app._process_note After check_and_fix_extraneous | 'source' in fm: {'source' in frontmatter}"
+                    "[DEBUG TRACE] app._process_note After check_and_fix_extraneous"
                 )
 
             self.io.write_note(file_path, frontmatter, result.body)

@@ -66,8 +66,6 @@ class NoteFactory:
         }
 
         # Optional fields
-        if source := data.get("source"):
-            note_data["source"] = source
         if priority := data.get("priority"):
             note_data["priority"] = priority
         if area := data.get("area"):

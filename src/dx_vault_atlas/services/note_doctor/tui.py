@@ -4,7 +4,6 @@ from typing import Any
 from dx_vault_atlas.services.note_creator.tui_steps import (
     AREA_STEP,
     PRIORITY_STEP,
-    SOURCE_STEP,
     STATUS_STEP,
     TEMPLATE_STEP,
     TITLE_STEP,
@@ -138,7 +137,6 @@ class DoctorTUI:
         """Add dependent steps if missing or invalid."""
         # Map step to the field key it modifies/provides
         dependency_map = [
-            (SOURCE_STEP, "source"),
             (PRIORITY_STEP, "priority"),
             (AREA_STEP, "area"),
             (STATUS_STEP, "status"),
@@ -150,6 +148,26 @@ class DoctorTUI:
             # to avoid false positives (e.g., asking for source in a RefNote).
             if (key in missing or key in invalid) and step not in steps:
                 steps.append(step)
+
+        if "integrity_aliases" in invalid:
+            from enum import Enum
+
+            class IntegrityAliasesAction(Enum):
+                ADD = "Add title to aliases"
+                KEEP = "Keep current aliases"
+                REPLACE = "Replace aliases with title only"
+
+            from dx_vault_atlas.shared.tui.wizard import WizardStep
+
+            steps.append(
+                WizardStep(
+                    key="integrity_aliases",
+                    label="Title is missing from aliases. What would you like to do?",
+                    step_type="select",
+                    enum_cls=IntegrityAliasesAction,
+                    default_value=IntegrityAliasesAction.ADD,
+                )
+            )
 
     def _filter_conditions_if_missing(
         self, steps: list[Any], missing: set[str], invalid: set[str]

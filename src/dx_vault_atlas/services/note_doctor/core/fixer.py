@@ -73,6 +73,43 @@ class FixRuleProtocol(Protocol):
         ...
 
 
+class IntegrityAliasesFixRule:
+    """Auto-fixes integrity_aliases if the aliases list is empty."""
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        logger.debug("[Doctor Debug] Fixer 'IntegrityAliasesFixRule' start")
+        title = updated.get("title")
+        if not title or not isinstance(title, str):
+            return False
+
+        aliases_field = updated.get("aliases")
+
+        # If it's missing, or empty list, or string, we can auto-fix it
+        if "aliases" not in updated:
+            updated["aliases"] = [title]
+            return True
+
+        if isinstance(aliases_field, list) and not aliases_field:
+            updated["aliases"] = [title]
+            return True
+
+        # EnumFixRule already handles converting string to list, but just in case
+        if isinstance(aliases_field, str):
+            if title != aliases_field:
+                updated["aliases"] = [aliases_field, title]
+                return True
+            updated["aliases"] = [title]
+            return True
+
+        # If it's a list with items but missing the title, we let tui/cli handle the prompt.
+        return False
+
+
 class DateFixRule:
     """Fixes created and updated dates."""
 
@@ -264,9 +301,7 @@ class EnumFixRule:
 
         changed = False
         if "status" not in updated or not updated["status"]:
-            logger.debug(
-                "[Doctor Debug] Task/Project default injecting status='to_do'"
-            )
+            logger.debug("[Doctor Debug] Task/Project default injecting status='to_do'")
             updated["status"] = "to_do"
             changed = True
         if "priority" not in updated:
@@ -351,7 +386,7 @@ class ExtraneousFieldsFixRule:
             from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
             logger.debug(
-                f"[DEBUG TRACE] fixer.ExtraneousFieldsFixRule | Stripping unknowns for {model_cls.__name__} | 'source' in updated: {'source' in updated}"
+                f"[DEBUG TRACE] fixer.ExtraneousFieldsFixRule | Stripping unknowns for {model_cls.__name__}"
             )
 
             clean_data = strip_unknown_fields(model_cls, updated)
@@ -359,7 +394,7 @@ class ExtraneousFieldsFixRule:
             # Since this is a reference dict, we have to clear and update to preserve the original dict reference
             if clean_data != updated:
                 logger.debug(
-                    f"[Doctor Debug] Fixer removed extraneous fields | original={list(updated.keys())} -> new={list(clean_data.keys())} | 'source' in clean_data: {'source' in clean_data}"
+                    f"[Doctor Debug] Fixer removed extraneous fields | original={list(updated.keys())} -> new={list(clean_data.keys())}"
                 )
                 updated.clear()
                 updated.update(clean_data)
@@ -397,9 +432,7 @@ class NoteFixer:
         Returns:
             (has_changes, fixed_frontmatter, body)
         """
-        logger.debug(
-            f"[DEBUG TRACE] fixer.fix Start | 'source' in current: {'source' in current}"
-        )
+        logger.debug("[DEBUG TRACE] fixer.fix Start")
         total_changes = False
         original = current.copy()
 
@@ -407,7 +440,5 @@ class NoteFixer:
             if rule.apply(file_path, original, current):
                 total_changes = True
 
-        logger.debug(
-            f"[DEBUG TRACE] fixer.fix End | total_changes={total_changes} | 'source' in current: {'source' in current}"
-        )
+        logger.debug(f"[DEBUG TRACE] fixer.fix End | total_changes={total_changes}")
         return total_changes, current, body

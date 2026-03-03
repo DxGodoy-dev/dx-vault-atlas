@@ -4,12 +4,10 @@ from dx_vault_atlas.services.note_creator.core.registry import has_field
 from dx_vault_atlas.services.note_creator.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
-    DEFAULT_SOURCE,
     DEFAULT_TEMPLATE,
 )
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     NoteStatus,
     NoteTemplate,
     Priority,
@@ -30,15 +28,6 @@ TEMPLATE_STEP = WizardStep(
     step_type="select",
     enum_cls=NoteTemplate,
     default_value=DEFAULT_TEMPLATE,
-)
-
-SOURCE_STEP = WizardStep(
-    key="source",
-    label="Select source",
-    step_type="select",
-    enum_cls=NoteSource,
-    default_value=DEFAULT_SOURCE,
-    condition=lambda data: has_field(data.get("template"), "source"),
 )
 
 PRIORITY_STEP = WizardStep(
@@ -72,7 +61,6 @@ STATUS_STEP = WizardStep(
 NOTE_CREATOR_STEPS = [
     TITLE_STEP,
     TEMPLATE_STEP,
-    SOURCE_STEP,
     PRIORITY_STEP,
     AREA_STEP,
 ]

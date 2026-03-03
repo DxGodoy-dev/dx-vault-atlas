@@ -8,13 +8,11 @@ from dx_vault_atlas.services.note_creator.core.registry import has_field
 from dx_vault_atlas.services.note_creator.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
-    DEFAULT_SOURCE,
     DEFAULT_TAGS,
     DEFAULT_TEMPLATE,
 )
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     NoteTemplate,
     Priority,
 )
@@ -22,11 +20,8 @@ from dx_vault_atlas.services.note_creator.services.console import ConsoleInterfa
 
 
 def _get_workflow_info() -> dict[str, Any]:
-    """Get workflow fields (source, priority)."""
+    """Get workflow fields (priority)."""
     return {
-        "source": ConsoleInterface.choose_enum(
-            "Source", NoteSource, default=DEFAULT_SOURCE
-        ),
         "priority": ConsoleInterface.choose_enum(
             "Priority", Priority, default=DEFAULT_PRIORITY
         ),
@@ -66,7 +61,7 @@ def get_note_wizard_data(raw_title: str) -> dict[str, Any]:
     # 3. Execute dynamic steps based on model fields
     steps: list[Callable[[], dict[str, Any]]] = []
 
-    if has_field(template, "source") or has_field(template, "priority"):
+    if has_field(template, "priority"):
         steps.append(_get_workflow_info)
 
     if has_field(template, "area"):

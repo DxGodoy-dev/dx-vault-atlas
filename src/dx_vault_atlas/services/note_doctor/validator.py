@@ -14,7 +14,6 @@ from dx_vault_atlas.core.registry import NoteModelRegistry
 from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
 from dx_vault_atlas.services.note_creator.models.enums import (
     NoteArea,
-    NoteSource,
     Priority,
 )
 from dx_vault_atlas.services.note_creator.models.note import (
@@ -121,27 +120,6 @@ class PriorityRule:
             invalid.append("priority")
 
 
-class SourceRule:
-    """Warn on non-enum source values (lenient)."""
-
-    def check(
-        self,
-        file_path: Path,
-        frontmatter: dict[str, Any],
-        invalid: list[str],
-        warnings: list[str],
-    ) -> None:
-        """Verify source field."""
-        val = frontmatter.get("source")
-        if not val:
-            return
-        try:
-            NoteSource(val)
-        except ValueError:
-            if isinstance(val, str) and val.strip():
-                warnings.append(f"unknown_source: {val}")
-
-
 class AreaRule:
     """Flag invalid area values."""
 
@@ -232,7 +210,6 @@ class NoteDoctorValidator:
             else [
                 IntegrityRule(),
                 PriorityRule(),
-                SourceRule(),
                 AreaRule(),
                 VersionRule(),
             ]
@@ -253,7 +230,7 @@ class NoteDoctorValidator:
     ) -> ValidationResult:
         """Validate a note in-memory against schema and business rules."""
         logger.debug(
-            f"[DEBUG TRACE] validator.validate_content Start | path={file_path.name} | 'source' in frontmatter: {'source' in frontmatter}"
+            f"[DEBUG TRACE] validator.validate_content Start | path={file_path.name}"
         )
         note_type = frontmatter.get("type")
         if not note_type or not isinstance(note_type, str):
@@ -371,7 +348,7 @@ class NoteDoctorValidator:
             # Only pass fields the model knows about
             filtered = strip_unknown_fields(model_cls, frontmatter)
             logger.debug(
-                f"[DEBUG TRACE] validator._run_pydantic | class={model_cls.__name__} | 'source' in filtered: {'source' in filtered} | 'source' in fm: {'source' in frontmatter}"
+                f"[DEBUG TRACE] validator._run_pydantic | class={model_cls.__name__}"
             )
             model_cls(**filtered)
         except ValidationError as e:
