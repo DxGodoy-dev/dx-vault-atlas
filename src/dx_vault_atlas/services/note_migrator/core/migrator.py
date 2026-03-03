@@ -146,11 +146,16 @@ class NoteMigrator:
             raise MissingFieldsError(note_path, final_missing)
 
         # Write migrated note (schema_upgrader handles field cleanup)
-        self._write_migrated_note(note_path, final_valid_frontmatter, parsed.body)
+        # Returns False if skipped due to collision
+        write_success = self._write_migrated_note(
+            note_path, final_valid_frontmatter, parsed.body
+        )
 
         return MigrationResult(
             file_path=note_path,
-            status=MigrationStatus.SUCCESS,
+            status=MigrationStatus.SUCCESS
+            if write_success
+            else MigrationStatus.SKIPPED,
             detected_type=detected_type,
         )
 
@@ -198,10 +203,20 @@ class NoteMigrator:
         note_path: Path,
         frontmatter: dict[str, str | int | list[str] | None],
         body: str,
-    ) -> None:
-        """Write the migrated note back to disk."""
+    ) -> bool:
+        """Write the migrated note back to disk.
+
+        Returns:
+            True if written successfully, False if skipped due to collision.
+        """
+        # NoteMigrator.migrate performs in-place updates.
+        # If the architecture changes to support moving files (source -> target),
+        # an explicit `self.file_repository.target_exists(target_path)` check
+        # should be added here to warn and return False.
+
         # Delegate schema upgrade and cleaning
         upgraded_frontmatter = self.schema_upgrader.upgrade(dict(frontmatter))
 
         yaml_content = self.yaml_parser.serialize_frontmatter(upgraded_frontmatter)
         self.file_repository.write_text(note_path, yaml_content + body)
+        return True

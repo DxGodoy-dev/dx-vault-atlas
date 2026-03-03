@@ -30,6 +30,10 @@ class TitleNormalizer:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         clean_name = cls.sanitize(raw_title)
 
+        if not clean_name:
+            msg = "Title cannot be empty."
+            raise ValueError(msg)
+
         return f"{timestamp}_{clean_name}"
 
     @staticmethod

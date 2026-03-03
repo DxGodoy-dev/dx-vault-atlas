@@ -163,11 +163,27 @@ EXPECTATIONS = {
 }
 
 
-def test_all_doctor_scenarios() -> None:  # noqa: C901
-    """Run all 20 doctor scenarios and check expectations."""
-    if TEMP_DIR.exists():
-        shutil.rmtree(TEMP_DIR)
-    TEMP_DIR.mkdir()
+import pytest
+
+
+def get_scenarios() -> list[Path]:
+    """Get all scenario files for parameterization."""
+    return sorted(SCENARIOS_DIR.glob("*.md"))
+
+
+@pytest.mark.parametrize("scenario_path", get_scenarios(), ids=lambda p: p.stem)
+def test_doctor_scenario(scenario_path: Path, tmp_path: Path) -> None:
+    """Run a single doctor scenario and check expectations."""
+    case_name = scenario_path.stem
+
+    expectation = None
+    for key, exp in EXPECTATIONS.items():
+        if key in case_name:
+            expectation = exp
+            break
+
+    if not expectation:
+        pytest.skip(f"No expectations defined for {case_name}")
 
     dr = DateResolver()
     fixer = NoteFixer(
@@ -181,115 +197,60 @@ def test_all_doctor_scenarios() -> None:  # noqa: C901
     parser = YamlParserService()
     validator = NoteDoctorValidator(yaml_parser=parser)
 
-    results: list[bool] = []
-    scenarios = sorted(SCENARIOS_DIR.glob("*.md"))
+    temp_path = tmp_path / scenario_path.name
+    shutil.copy2(scenario_path, temp_path)
 
-    print(f"Running {len(scenarios)} scenarios...\n")  # noqa: T201
-
-    for scenario_path in scenarios:
-        case_name = scenario_path.stem
-        temp_path = TEMP_DIR / scenario_path.name
-        shutil.copy2(scenario_path, temp_path)
-
-        # ── Pre-rename to match title (for integrity check) ──
-        # Skip rename for scenario 14 to test integrity mismatch.
-        if "14_alias_consistency_fail" not in case_name:
-            try:
-                content = temp_path.read_text("utf-8")
-                parsed = parser.parse(content)
-                title = parsed.frontmatter.get("title")
-                if title and isinstance(title, str):
-                    safe = title.lower().replace(" ", "_").replace("-", "_")
-                    # Preserve timestamp prefix from filename
-                    ts = re.search(r"(\d{12,14})$", scenario_path.stem)
-                    if ts:
-                        safe = f"{ts.group(1)}_{safe}"
-                    safe += ".md"
-                    new_path = TEMP_DIR / safe
-                    if new_path != temp_path:
-                        shutil.move(str(temp_path), str(new_path))
-                        temp_path = new_path
-                        print(  # noqa: T201
-                            f"  Renamed to {temp_path.name}"
-                        )
-            except Exception:
-                pass
-
-        # ── Run Fixer ──
+    # ── Pre-rename to match title (for integrity check) ──
+    if "14_alias_consistency_fail" not in case_name:
         try:
-            parsed_current = parser.parse(temp_path.read_text("utf-8"))
-            has_changes, fixed_fm, body = fixer.fix(
-                temp_path, parsed_current.frontmatter, parsed_current.body
-            )
-        except YamlParseError:
-            has_changes, fixed_fm, body = False, {}, ""
+            content = temp_path.read_text("utf-8")
+            parsed = parser.parse(content)
+            title = parsed.frontmatter.get("title")
+            if title and isinstance(title, str):
+                safe = title.lower().replace(" ", "_").replace("-", "_")
+                ts = re.search(r"(\d{12,14})$", scenario_path.stem)
+                if ts:
+                    safe = f"{ts.group(1)}_{safe}"
+                safe += ".md"
+                new_path = tmp_path / safe
+                if new_path != temp_path:
+                    shutil.move(str(temp_path), str(new_path))
+                    temp_path = new_path
+        except Exception:
+            pass
 
-        # ── Write back if changed ──
-        if has_changes:
-            new_yaml = yaml.dump(
-                fixed_fm,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
-                Dumper=NoAliasDumper,
-            )
-            new_content = f"---\n{new_yaml}---\n{body}"
-            temp_path.write_text(new_content, "utf-8")
+    # ── Run Fixer ──
+    try:
+        parsed_current = parser.parse(temp_path.read_text("utf-8"))
+        has_changes, fixed_fm, body = fixer.fix(
+            temp_path, parsed_current.frontmatter, parsed_current.body
+        )
+    except YamlParseError:
+        has_changes, fixed_fm, body = False, {}, ""
 
-        # ── Run Validator ──
-        val_result = validator.validate(temp_path)
+    # ── Write back if changed ──
+    if has_changes:
+        new_yaml = yaml.dump(
+            fixed_fm,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+            Dumper=NoAliasDumper,
+        )
+        new_content = f"---\n{new_yaml}---\n{body}"
+        temp_path.write_text(new_content, "utf-8")
 
-        # ── Match expectations ──
-        expectation = None
-        for key, exp in EXPECTATIONS.items():
-            if key in case_name:
-                expectation = exp
-                break
-        if not expectation:
-            print(f"[SKIP] {case_name}")  # noqa: T201
-            continue
+    # ── Run Validator ──
+    val_result = validator.validate(temp_path)
 
-        failed = False
-        reasons: list[str] = []
+    # ── Match expectations ──
+    assert has_changes == expectation["changes_made"], "Mismatch in changes_made"
+    assert val_result.is_valid == expectation["valid_after_fix"], (
+        f"Mismatch in valid_after_fix (invalid={val_result.invalid_fields}, missing={val_result.missing_fields})"
+    )
 
-        if has_changes != expectation["changes_made"]:
-            failed = True
-            reasons.append(
-                f"changes_made: expected "
-                f"{expectation['changes_made']}, "
-                f"got {has_changes}"
-            )
-
-        if val_result.is_valid != expectation["valid_after_fix"]:
-            failed = True
-            reasons.append(
-                f"valid_after_fix: expected "
-                f"{expectation['valid_after_fix']}, "
-                f"got {val_result.is_valid} "
-                f"(inv={val_result.invalid_fields} "
-                f"miss={val_result.missing_fields})"
-            )
-
-        final = temp_path.read_text("utf-8")
-        for s in expectation.get("content_contains", []):
-            if s not in final:
-                failed = True
-                reasons.append(f"missing content: '{s}'")
-
-        if failed:
-            print(f"[FAIL] {case_name}")  # noqa: T201
-            for r in reasons:
-                print(f"  - {r}")  # noqa: T201
-            # Show snippet for debugging
-            print(  # noqa: T201
-                f"    content: {final[:300]!r}..."
-            )
-            results.append(False)
-        else:
-            print(f"[PASS] {case_name}")  # noqa: T201
-            results.append(True)
-
-    passed = sum(results)
-    total = len(results)
-    print(f"\nSummary: {passed}/{total} passed.")  # noqa: T201
-    assert passed == total and total > 0, f"{total - passed} scenarios failed"
+    final_content = temp_path.read_text("utf-8")
+    for s in expectation.get("content_contains", []):
+        assert s in final_content, (
+            f"Expected '{s}' not in content:\n{final_content[:300]}"
+        )

@@ -17,16 +17,26 @@ class TestNoteProcessor:
     """Tests for NoteProcessor."""
 
     @pytest.fixture
-    def mock_templating(self) -> MagicMock:
-        """Mock templating service."""
-        service = MagicMock(spec=TemplatingService)
-        service.render.return_value = "Run mocked content"
-        return service
+    def test_templating(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> TemplatingService:
+        """Create a real TemplatingService loaded from tmp_path."""
+        import dx_vault_atlas.services.note_creator.services.templating as templating_mod
+
+        monkeypatch.setattr(templating_mod, "TEMPLATES_DIR", tmp_path)
+
+        # Create a dummy template
+        template_file = tmp_path / "info.md"
+        template_file.write_text(
+            "Hello {{ title }}\nType: {{ type }}\n", encoding="utf-8"
+        )
+
+        return TemplatingService()
 
     @pytest.fixture
-    def processor(self, mock_templating: MagicMock) -> NoteProcessor:
+    def processor(self, test_templating: TemplatingService) -> NoteProcessor:
         """Create processor instance."""
-        return NoteProcessor(mock_templating)
+        return NoteProcessor(test_templating)
 
     @pytest.fixture
     def sample_note(self) -> BaseNote:
@@ -40,15 +50,15 @@ class TestNoteProcessor:
         )
 
     def test_render_note(self, processor: NoteProcessor, sample_note: BaseNote) -> None:
-        """Should render template and return content."""
+        """Should render real template and return content."""
         content = processor.render_note("info.md", sample_note)
-        assert "Run mocked content" in content
-        processor.templating.render.assert_called_once_with("info.md", sample_note)
+        assert "Hello Test Note" in content
+        assert "Type: Ranked" in content
 
     def test_render_note_with_body(
         self, processor: NoteProcessor, sample_note: BaseNote
     ) -> None:
-        """Should render template and append body."""
+        """Should render real template and append body."""
         content = processor.render_note("info.md", sample_note, "body text")
-        assert "Run mocked content" in content
+        assert "Hello Test Note" in content
         assert "body text" in content
