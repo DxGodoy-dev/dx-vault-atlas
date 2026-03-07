@@ -4,35 +4,31 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.core.registry import has_field
-from dx_vault_atlas.services.note_creator.defaults import (
+from dx_vault_atlas.shared.models.template_registry import has_field
+from dx_vault_atlas.shared.models.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
     DEFAULT_TAGS,
     DEFAULT_TEMPLATE,
 )
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteTemplate,
     Priority,
 )
-from dx_vault_atlas.services.note_creator.services.console import ConsoleInterface
+from dx_vault_atlas.shared.console import choose_enum
 
 
 def _get_workflow_info() -> dict[str, Any]:
     """Get workflow fields (priority)."""
     return {
-        "priority": ConsoleInterface.choose_enum(
-            "Priority", Priority, default=DEFAULT_PRIORITY
-        ),
+        "priority": choose_enum("Priority", Priority, default_index=DEFAULT_PRIORITY),
     }
 
 
 def _get_context_info() -> dict[str, Any]:
     """Get context fields (area)."""
-    return {
-        "area": ConsoleInterface.choose_enum("Area", NoteArea, default=DEFAULT_AREA)
-    }
+    return {"area": choose_enum("Area", NoteArea, default_index=DEFAULT_AREA)}
 
 
 def get_note_wizard_data(raw_title: str) -> dict[str, Any]:
@@ -45,9 +41,7 @@ def get_note_wizard_data(raw_title: str) -> dict[str, Any]:
         Dictionary with all collected data for note creation.
     """
     # 1. Select template first
-    template = ConsoleInterface.choose_enum(
-        "Template", NoteTemplate, default=DEFAULT_TEMPLATE
-    )
+    template = choose_enum("Template", NoteTemplate, default_index=DEFAULT_TEMPLATE)
 
     # 2. Build base data
     note_data: dict[str, Any] = {

@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from dx_vault_atlas.services.note_creator.utils.title_normalizer import TitleNormalizer
+from dx_vault_atlas.shared.utils.title_normalizer import TitleNormalizer
 
 
 class TestTitleNormalizer:

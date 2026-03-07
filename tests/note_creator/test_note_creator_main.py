@@ -1,17 +1,16 @@
 """Tests for note creator factory."""
 
 from dx_vault_atlas.services.note_creator.core.factory import NoteFactory
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
-    NoteSource,
     NoteStatus,
     NoteTemplate,
     Priority,
 )
-from dx_vault_atlas.services.note_creator.models.note import (
+from dx_vault_atlas.shared.models.note import (
     BaseNote,
     ProjectNote,
-    RankedNote,
+    InfoNote,
 )
 
 
@@ -19,20 +18,18 @@ class TestNoteFactory:
     """Tests for NoteFactory."""
 
     def test_create_info_note(self) -> None:
-        """Should create RankedNote for INFO template."""
+        """Should create InfoNote for INFO template."""
         data = {
             "title": "My Note",
             "template": NoteTemplate.INFO,
-            "source": NoteSource.ME,
             "priority": Priority.MEDIUM,
         }
 
         note = NoteFactory.create_note(data)
 
-        assert isinstance(note, RankedNote)
+        assert isinstance(note, InfoNote)
         assert note.title == '"My Note"'
         assert note.note_type == "info"
-        assert note.source == NoteSource.ME.value
         assert note.priority == Priority.MEDIUM.value
         assert note.status == NoteStatus.TO_READ.value
 
@@ -41,7 +38,6 @@ class TestNoteFactory:
         data = {
             "title": "My Project",
             "template": NoteTemplate.PROJECT,
-            "source": NoteSource.ME,
             "priority": Priority.HIGH,
             "area": NoteArea.WORK,
         }

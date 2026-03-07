@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.tui_steps import NOTE_CREATOR_STEPS
+from dx_vault_atlas.shared.tui.common_steps import NOTE_CREATOR_STEPS
 from dx_vault_atlas.shared.tui import WizardConfig, run_wizard
 
 

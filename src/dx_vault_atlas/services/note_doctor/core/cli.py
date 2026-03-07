@@ -3,7 +3,7 @@
 from typing import Any
 
 from dx_vault_atlas.core.registry import NoteModelRegistry
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     Priority,
 )

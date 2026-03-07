@@ -13,14 +13,14 @@ from dx_vault_atlas.services.note_migrator.core.schema_upgrader import SchemaUpg
 from dx_vault_atlas.services.note_migrator.core.transformation_service import (
     TransformationService,
 )
-from dx_vault_atlas.services.note_migrator.services.file_repository import (
+from dx_vault_atlas.shared.core.io import (
     LocalFileRepository,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParserService
+from dx_vault_atlas.shared.yaml_parser import YamlParserService
 from dx_vault_atlas.shared.config import GlobalConfig
 
 # Import note models to populate the NoteModelRegistry
-import dx_vault_atlas.services.note_creator.models.note  # noqa: F401
+import dx_vault_atlas.shared.models.note  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

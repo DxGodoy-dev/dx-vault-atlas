@@ -3,10 +3,10 @@
 from pathlib import Path
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.core.registry import get_model
-from dx_vault_atlas.services.note_creator.defaults import DEFAULT_TAGS
-from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
-from dx_vault_atlas.services.note_creator.models.note import AnyNote, BaseNote
+from dx_vault_atlas.shared.models.template_registry import get_model
+from dx_vault_atlas.shared.models.defaults import DEFAULT_TAGS
+from dx_vault_atlas.shared.models.enums import NoteTemplate
+from dx_vault_atlas.shared.models.note import AnyNote, BaseNote
 
 
 class NoteFactory:

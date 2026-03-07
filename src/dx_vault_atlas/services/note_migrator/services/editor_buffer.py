@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+from dx_vault_atlas.shared.yaml_parser import (
     YamlParseError,
     YamlParserService,
 )

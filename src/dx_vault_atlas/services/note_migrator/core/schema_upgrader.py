@@ -3,7 +3,7 @@
 from packaging.version import parse as parse_version
 
 from dx_vault_atlas.core.registry import NoteModelRegistry
-from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
+from dx_vault_atlas.shared.models.defaults import SCHEMA_VERSION
 from dx_vault_atlas.shared.logger import logger
 
 

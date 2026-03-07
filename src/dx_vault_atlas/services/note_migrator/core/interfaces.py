@@ -4,7 +4,7 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any, Protocol
 
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import ParsedNote
+from dx_vault_atlas.shared.yaml_parser import ParsedNote
 
 
 class IYamlParser(Protocol):

@@ -1,11 +1,10 @@
 """Tests for wizard configuration."""
 
-from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
-from dx_vault_atlas.services.note_creator.tui_steps import (
+from dx_vault_atlas.shared.models.enums import NoteTemplate
+from dx_vault_atlas.shared.tui.common_steps import (
     AREA_STEP,
     NOTE_CREATOR_STEPS,
     PRIORITY_STEP,
-    SOURCE_STEP,
     TEMPLATE_STEP,
     TITLE_STEP,
 )
@@ -26,19 +25,17 @@ class TestWizardStep:
         assert TEMPLATE_STEP.step_type == "select"
         assert TEMPLATE_STEP.enum_cls == NoteTemplate
 
-    def test_moc_skips_source_priority_area(self) -> None:
-        """MOC template should skip source/priority/area steps."""
+    def test_moc_skips_priority_area(self) -> None:
+        """MOC template should skip priority/area steps."""
         moc_data = {"template": NoteTemplate.MOC}
 
-        assert SOURCE_STEP.condition(moc_data) is False
         assert PRIORITY_STEP.condition(moc_data) is False
         assert AREA_STEP.condition(moc_data) is False
 
-    def test_info_includes_source_priority_not_area(self) -> None:
-        """Info template needs source/priority but not area."""
+    def test_info_includes_priority_not_area(self) -> None:
+        """Info template needs priority but not area."""
         info_data = {"template": NoteTemplate.INFO}
 
-        assert SOURCE_STEP.condition(info_data) is True
         assert PRIORITY_STEP.condition(info_data) is True
         assert AREA_STEP.condition(info_data) is False
 
@@ -58,14 +55,14 @@ class TestWizardStep:
 class TestNoteCreatorSteps:
     """Tests for NOTE_CREATOR_STEPS configuration."""
 
-    def test_has_five_steps(self) -> None:
-        """Should have 5 steps total."""
-        assert len(NOTE_CREATOR_STEPS) == 5
+    def test_has_four_steps(self) -> None:
+        """Should have 4 steps total."""
+        assert len(NOTE_CREATOR_STEPS) == 4
 
     def test_steps_in_correct_order(self) -> None:
         """Steps should be in correct order."""
         keys = [step.key for step in NOTE_CREATOR_STEPS]
-        assert keys == ["title", "template", "source", "priority", "area"]
+        assert keys == ["title", "template", "priority", "area"]
 
 
 class TestWizardConfig:

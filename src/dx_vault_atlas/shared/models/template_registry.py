@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
+    from dx_vault_atlas.shared.models.enums import NoteTemplate
 
 
 # Map template enums to their corresponding Pydantic note models
@@ -57,10 +57,10 @@ def has_field(template: Any, field_name: str) -> bool:  # noqa: ANN401
         True if the field is defined on the model, False otherwise.
     """
     # Import locally to avoid circular dependencies if enums imports registry
-    from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
+    from dx_vault_atlas.shared.models.enums import NoteTemplate
 
     if not _MODEL_REGISTRY:
-        from dx_vault_atlas.services.note_creator.models import note  # noqa: F401
+        from dx_vault_atlas.shared.models import note  # noqa: F401
 
     if isinstance(template, str) and not isinstance(template, NoteTemplate):
         try:

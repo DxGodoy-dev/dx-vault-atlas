@@ -3,11 +3,11 @@
 from pathlib import Path
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
+from dx_vault_atlas.shared.utils.title_normalizer import (
     TitleNormalizer,
 )
 from dx_vault_atlas.services.note_doctor.core.cli import DoctorCLI
-from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
+from dx_vault_atlas.shared.utils.date_resolver import DateResolver
 from dx_vault_atlas.services.note_doctor.core.fixer import (
     DateFixRule,
     DefaultsFixRule,
@@ -15,7 +15,7 @@ from dx_vault_atlas.services.note_doctor.core.fixer import (
     ExtraneousFieldsFixRule,
     NoteFixer,
 )
-from dx_vault_atlas.services.note_doctor.core.io_service import NoteIOService
+from dx_vault_atlas.shared.core.io import NoteIOService
 from dx_vault_atlas.services.note_doctor.core.patcher import (
     FrontmatterPatcher,
 )
@@ -24,7 +24,7 @@ from dx_vault_atlas.services.note_doctor.validator import (
     NoteDoctorValidator,
     ValidationResult,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+from dx_vault_atlas.shared.yaml_parser import (
     YamlParserService,
 )
 from dx_vault_atlas.shared.config import GlobalConfig
@@ -499,7 +499,7 @@ class DoctorApp:
 def create_app(settings: GlobalConfig) -> DoctorApp:
     """Create DoctorApp instance."""
     # Ensure models are registered
-    import dx_vault_atlas.services.note_creator.models.note  # noqa: F401
+    import dx_vault_atlas.shared.models.note  # noqa: F401
     from dx_vault_atlas.core.registry import NoteModelRegistry
 
     yaml_parser = YamlParserService()

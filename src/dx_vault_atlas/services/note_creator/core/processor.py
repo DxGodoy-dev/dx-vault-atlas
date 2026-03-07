@@ -1,7 +1,7 @@
 """Note processor for rendering and writing notes."""
 
 from dx_vault_atlas.services.note_creator.core.ports import ITemplatingService
-from dx_vault_atlas.services.note_creator.models.note import BaseNote
+from dx_vault_atlas.shared.models.note import BaseNote
 
 
 class NoteProcessor:

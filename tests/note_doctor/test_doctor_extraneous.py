@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dx_vault_atlas.services.note_doctor.core.date_resolver import DateResolver
+from dx_vault_atlas.shared.utils.date_resolver import DateResolver
 from dx_vault_atlas.services.note_doctor.core.fixer import (
     DateFixRule,
     DefaultsFixRule,
@@ -13,7 +13,7 @@ from dx_vault_atlas.services.note_doctor.core.fixer import (
     NoteFixer,
 )
 from dx_vault_atlas.services.note_doctor.validator import NoteDoctorValidator
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParserService
+from dx_vault_atlas.shared.yaml_parser import YamlParserService
 
 
 class TestExtraneousFieldStripping:
@@ -80,10 +80,10 @@ source: ia
             f"invalid={fixed_result.invalid_fields}"
         )
 
-    def test_info_note_source_kept(
+    def test_info_note_keeps_priority(
         self, validator: NoteDoctorValidator, fixer: NoteFixer, tmp_path: Path
     ) -> None:
-        """An info note with source should keep it (source is a valid field)."""
+        """An info note with priority should keep it (priority is a valid field)."""
         path = tmp_path / "20260218024306_info_note.md"
         content = """---
 version: '1.0'
@@ -94,7 +94,6 @@ tags: []
 created: 2026-02-18 02:43:06
 updated: 2026-02-18 02:43:06
 type: info
-source: ia
 priority: 2
 status: to_do
 ---
@@ -106,7 +105,7 @@ status: to_do
         assert result.is_valid
 
         _, fixed_fm, _ = fixer.fix(path, dict(result.frontmatter), result.body)
-        assert "source" in fixed_fm, "source should be kept for info notes"
+        assert "priority" in fixed_fm, "priority should be kept for info notes"
 
     def test_fix_type_strips_md_suffix(self, fixer: NoteFixer, tmp_path: Path) -> None:
         """Fixer should normalise 'ref.md' to 'ref' in the type field."""

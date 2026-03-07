@@ -1,12 +1,12 @@
 """Wizard steps for Note Creator TUI."""
 
-from dx_vault_atlas.services.note_creator.core.registry import has_field
-from dx_vault_atlas.services.note_creator.defaults import (
+from dx_vault_atlas.shared.models.template_registry import has_field
+from dx_vault_atlas.shared.models.defaults import (
     DEFAULT_AREA,
     DEFAULT_PRIORITY,
     DEFAULT_TEMPLATE,
 )
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteStatus,
     NoteTemplate,

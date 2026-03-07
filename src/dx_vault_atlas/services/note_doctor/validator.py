@@ -11,18 +11,18 @@ from pydantic import ValidationError
 # Constants
 # ---------------------------------------------------------------------------
 from dx_vault_atlas.core.registry import NoteModelRegistry
-from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.defaults import SCHEMA_VERSION
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     Priority,
 )
-from dx_vault_atlas.services.note_creator.models.note import (
+from dx_vault_atlas.shared.models.note import (
     BaseNote,
 )
-from dx_vault_atlas.services.note_creator.utils.title_normalizer import (
+from dx_vault_atlas.shared.utils.title_normalizer import (
     TitleNormalizer,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+from dx_vault_atlas.shared.yaml_parser import (
     YamlParseError,
     YamlParserService,
 )

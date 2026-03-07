@@ -9,10 +9,11 @@ from dx_vault_atlas.services.note_migrator.core.interfaces import (
     IUserInterface,
     IYamlParser,
 )
-from dx_vault_atlas.services.note_migrator.services.file_repository import (
+from dx_vault_atlas.shared.core.io import (
     FileRepository,
+    LocalFileRepository,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+from dx_vault_atlas.shared.yaml_parser import (
     ParsedNote,
     YamlParseError,
 )
@@ -168,17 +169,14 @@ class MigratorApp:
 def create_app(settings: GlobalConfig) -> MigratorApp:
     """Factory function to create MigratorApp and inject dependencies."""
     # Ensure models are registered in NoteModelRegistry
-    import dx_vault_atlas.services.note_creator.models.note  # noqa: F401
+    import dx_vault_atlas.shared.models.note  # noqa: F401
     from dx_vault_atlas.services.note_migrator.core.transformation_service import (
         TransformationService,
-    )
-    from dx_vault_atlas.services.note_migrator.services.file_repository import (
-        LocalFileRepository,
     )
     from dx_vault_atlas.services.note_migrator.services.ui_service import (
         CliUserInterface,
     )
-    from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+    from dx_vault_atlas.shared.yaml_parser import (
         YamlParserService,
     )
     from dx_vault_atlas.shared.core.scanner import VaultScanner

@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Protocol
 
-from dx_vault_atlas.services.note_creator.models.note import BaseNote
+from dx_vault_atlas.shared.models.note import BaseNote
 
 
 class ITemplatingService(Protocol):

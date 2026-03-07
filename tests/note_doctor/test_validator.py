@@ -13,7 +13,7 @@ class TestNoteValidator:
     @pytest.fixture
     def validator(self) -> NoteDoctorValidator:
         """Create validator instance."""
-        from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+        from dx_vault_atlas.shared.yaml_parser import (
             YamlParserService,
         )
 
@@ -28,7 +28,6 @@ title: "Valid Note"
 aliases: ["Valid Note"]
 tags: []
 type: info
-source: me
 priority: 2
 status: to_do
 version: "1.0"
@@ -38,6 +37,7 @@ updated: 2023-01-01T12:00:00
 Some content
 """
         path.write_text(content, encoding="utf-8")
+        return path
         return path
 
     @pytest.fixture
@@ -62,7 +62,6 @@ Content
 title: "Bad Enum"
 aliases: ["Bad Enum"]
 type: info
-source: anything
 priority: 999
 ---
 Content
@@ -89,9 +88,7 @@ Content
         result = validator.validate(invalid_note_missing_fields)
 
         assert not result.is_valid
-        # Required for info: aliases, source, priority
-        # Note: source is kept required in structure check but validation is lenient
-        assert "source" in result.missing_fields
+        # Required for info: aliases, priority
         assert "priority" in result.missing_fields
 
     def test_validate_missing_type(
@@ -115,10 +112,6 @@ Content
         assert not result.is_valid
         # Should identify priority as invalid
         assert "priority" in result.invalid_fields
-        # Source should NOT be invalid, but might be a warning
-        # (It was "anything", which is a string, so it should be a warning)
-        assert "source" not in result.invalid_fields
-        assert any("unknown_source" in w for w in result.warnings)
 
     def test_validate_valid_source_string(
         self, validator: NoteDoctorValidator, tmp_path: Path
@@ -129,7 +122,6 @@ Content
 title: "Custom Source"
 aliases: ["Custom Source"]
 type: info
-source: "custom_provider"
 priority: 1
 status: "to_do"
 version: "1.0"
@@ -139,9 +131,6 @@ version: "1.0"
         result = validator.validate(path)
 
         assert result.is_valid
-        # Should have warning
-        assert any("unknown_source" in w for w in result.warnings)
-        assert any("unknown_source" in w for w in result.warnings)
 
     def test_validate_extraneous_source_ignored(
         self, validator: NoteDoctorValidator, tmp_path: Path

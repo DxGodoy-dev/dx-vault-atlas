@@ -23,10 +23,10 @@ from dx_vault_atlas.services.note_migrator.models.migration import (
 from dx_vault_atlas.services.note_migrator.services.editor_buffer import (
     EditorAbortedError,
 )
-from dx_vault_atlas.services.note_migrator.services.file_repository import (
+from dx_vault_atlas.shared.core.io import (
     FileRepository,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import YamlParseError
+from dx_vault_atlas.shared.yaml_parser import YamlParseError
 
 
 class NoteMigrator:

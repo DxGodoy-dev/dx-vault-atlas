@@ -1,7 +1,7 @@
 from dataclasses import replace
 from typing import Any
 
-from dx_vault_atlas.services.note_creator.tui_steps import (
+from dx_vault_atlas.shared.tui.common_steps import (
     AREA_STEP,
     PRIORITY_STEP,
     STATUS_STEP,
@@ -80,7 +80,7 @@ class DoctorTUI:
 
         # Check if we should auto-fill status post-wizard
         # (Conditions: Pre-flagged OR template selected is INFO)
-        from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate
+        from dx_vault_atlas.shared.models.enums import NoteTemplate
 
         # Determine effective type
         effective_type = current_type
@@ -112,7 +112,7 @@ class DoctorTUI:
         title_in_fm = result.frontmatter.get("title")
         if "title" in missing or not title_in_fm:
             default_title = result.file_path.stem
-            from dx_vault_atlas.services.note_doctor.core.date_resolver import (
+            from dx_vault_atlas.shared.utils.date_resolver import (
                 DateResolver,
             )
 

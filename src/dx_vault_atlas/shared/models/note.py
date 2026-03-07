@@ -5,9 +5,9 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from dx_vault_atlas.core.registry import register_note_type
-from dx_vault_atlas.services.note_creator.core.registry import register_model
-from dx_vault_atlas.services.note_creator.defaults import SCHEMA_VERSION
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.template_registry import register_model
+from dx_vault_atlas.shared.models.defaults import SCHEMA_VERSION
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteStatus,
     NoteTemplate,

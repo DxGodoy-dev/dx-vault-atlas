@@ -7,11 +7,11 @@ from typing import Any, Protocol
 from pydantic_core import PydanticUndefined
 
 from dx_vault_atlas.core.registry import NoteModelRegistry
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteStatus,
 )
-from dx_vault_atlas.services.note_doctor.core.date_resolver import (
+from dx_vault_atlas.shared.utils.date_resolver import (
     DateResolver,
 )
 from dx_vault_atlas.shared.logger import logger

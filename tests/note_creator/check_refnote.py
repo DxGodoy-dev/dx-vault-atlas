@@ -6,7 +6,7 @@ from pathlib import Path
 src_dir = Path("c:/Users/Administrator/Desktop/Dev/code/programs/dx-vault-atlas/src")
 sys.path.insert(0, str(src_dir))
 
-from dx_vault_atlas.services.note_creator.models.note import RefNote
+from dx_vault_atlas.shared.models.note import RefNote
 from dx_vault_atlas.shared.pydantic_utils import strip_unknown_fields
 
 print("RefNote fields:", list(RefNote.model_fields.keys()))

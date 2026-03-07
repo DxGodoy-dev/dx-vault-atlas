@@ -13,7 +13,7 @@ from dx_vault_atlas.services.note_creator.core.writer import NoteWriter
 from dx_vault_atlas.services.note_creator.services.editor import EditorService
 from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 from dx_vault_atlas.services.note_creator.tui import run_tui
-from dx_vault_atlas.services.note_creator.utils.title_normalizer import TitleNormalizer
+from dx_vault_atlas.shared.utils.title_normalizer import TitleNormalizer
 from dx_vault_atlas.shared.config import GlobalConfig
 from dx_vault_atlas.shared.logger import logger
 from dx_vault_atlas.shared.tui.result_app import run_result_tui
@@ -115,7 +115,7 @@ class DefaultErrorPresenter:
         """Display an error to the user."""
         from rich.prompt import Prompt
 
-        from dx_vault_atlas.services.note_creator.services.console import console
+        from dx_vault_atlas.shared.console import console
 
         console.print(f"[bold red]Error creating note:[/bold red] {error}")
         Prompt.ask("\n[dim]Press Enter to return to main menu...[/dim]")

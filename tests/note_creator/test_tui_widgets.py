@@ -1,6 +1,6 @@
 """Tests for shared TUI widgets."""
 
-from dx_vault_atlas.services.note_creator.models.enums import NoteTemplate, Priority
+from dx_vault_atlas.shared.models.enums import NoteTemplate, Priority
 from dx_vault_atlas.shared.tui.widgets import (
     VimOptionList,
     create_enum_options,

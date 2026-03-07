@@ -3,7 +3,7 @@
 Centralized configuration for easy customization.
 """
 
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteStatus,
     NoteTemplate,

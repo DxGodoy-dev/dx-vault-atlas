@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from dx_vault_atlas.services.note_creator.core.processor import NoteProcessor
-from dx_vault_atlas.services.note_creator.models.enums import (
+from dx_vault_atlas.shared.models.enums import (
     Priority,
 )
-from dx_vault_atlas.services.note_creator.models.note import BaseNote, RankedNote
+from dx_vault_atlas.shared.models.note import BaseNote, InfoNote
 from dx_vault_atlas.services.note_creator.services.templating import TemplatingService
 
 
@@ -41,11 +41,10 @@ class TestNoteProcessor:
     @pytest.fixture
     def sample_note(self) -> BaseNote:
         """Create sample note data."""
-        return RankedNote(
+        return InfoNote(
             title="Test Note",
             aliases=["Alias"],
-            note_type="Ranked",  # Pydantic alias for 'type'
-            source="Book",
+            note_type="info",  # Pydantic alias for 'type'
             priority=Priority.HIGH,
         )
 
@@ -53,7 +52,7 @@ class TestNoteProcessor:
         """Should render real template and return content."""
         content = processor.render_note("info.md", sample_note)
         assert "Hello Test Note" in content
-        assert "Type: Ranked" in content
+        assert "Type: info" in content
 
     def test_render_note_with_body(
         self, processor: NoteProcessor, sample_note: BaseNote

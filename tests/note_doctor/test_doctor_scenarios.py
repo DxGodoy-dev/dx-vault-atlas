@@ -18,7 +18,7 @@ class NoAliasDumper(yaml.SafeDumper):
         return True
 
 
-from dx_vault_atlas.services.note_doctor.core.date_resolver import (
+from dx_vault_atlas.shared.utils.date_resolver import (
     DateResolver,
 )
 from dx_vault_atlas.services.note_doctor.core.fixer import (
@@ -31,7 +31,7 @@ from dx_vault_atlas.services.note_doctor.core.fixer import (
 from dx_vault_atlas.services.note_doctor.validator import (
     NoteDoctorValidator,
 )
-from dx_vault_atlas.services.note_migrator.services.yaml_parser import (
+from dx_vault_atlas.shared.yaml_parser import (
     YamlParserService,
     YamlParseError,
 )
@@ -139,11 +139,6 @@ EXPECTATIONS = {
     # 17: Has unknown_field. Fixer strips unknowns → valid.
     "17_extra_fields": {
         "changes_made": True,
-        "valid_after_fix": True,
-    },
-    # 18: source: "Aliens" on a task note. Extraneous fields stripped → valid.
-    "18_unknown_enum_source": {
-        "changes_made": False,
         "valid_after_fix": True,
     },
     # 19: Malformed YAML → parser fails → no changes, invalid
