@@ -160,7 +160,7 @@ class DoctorCLI:
             "aliases" in result.missing_fields or "aliases" in result.invalid_fields
         )
         if needs_aliases:
-            existing = result.frontmatter.get("title", "").strip('"')
+            existing = result.frontmatter.get("title", "")
 
             if "integrity_aliases" in result.invalid_fields:
                 ui.console.print(

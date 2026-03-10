@@ -59,3 +59,30 @@ class TitleNormalizer:
 
         # 3. Trim edges
         return text.strip("_")
+
+    @staticmethod
+    def normalize_frontmatter_title(raw_title: str) -> str:
+        """Normalize YAML frontmatter title string.
+
+        Takes raw title value, removes defective quotes layers,
+        un-escapes previously escaped strings to avoid double escaping,
+        and returns the strictly clean string.
+        (Note: the final double quoting is left to PyYAML dumper.)
+        """
+        if not raw_title:
+            return ""
+
+        cleaned = raw_title.strip()
+
+        # 1. Remove nested defective quotes at the boundaries
+        while True:
+            if len(cleaned) >= 2 and (
+                (cleaned[0] == "'" and cleaned[-1] == "'")
+                or (cleaned[0] == '"' and cleaned[-1] == '"')
+            ):
+                cleaned = cleaned[1:-1]
+            else:
+                break
+
+        # 2. Undo previous escapes to prevent double escaping
+        return cleaned.replace('\\"', '"').replace("\\'", "'")

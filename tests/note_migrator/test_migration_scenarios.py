@@ -132,7 +132,7 @@ def test_migration_scenario(
     elif "06_missing_required" in scenario_name:
         assert "area: Personal" in final_content
     elif "08_empty_file" in scenario_name:
-        assert "title: Empty Note" in final_content
+        assert 'title: "Empty Note"' in final_content
     elif "09_date_string" in scenario_name:
         assert "October 27, 2023" in final_content
     elif "10_conflict" in scenario_name:

@@ -5,6 +5,22 @@ from dataclasses import dataclass
 
 import yaml
 
+from dx_vault_atlas.shared.utils.title_normalizer import TitleNormalizer
+
+
+class DoubleQuotedString(str):
+    """A string subclass that PyYAML will represent with double quotes."""
+
+
+def _double_quoted_presenter(
+    dumper: yaml.Dumper, data: DoubleQuotedString
+) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style='"')
+
+
+yaml.SafeDumper.add_representer(DoubleQuotedString, _double_quoted_presenter)  # type: ignore[arg-type]
+yaml.Dumper.add_representer(DoubleQuotedString, _double_quoted_presenter)  # type: ignore[arg-type]
+
 
 class YamlParseError(Exception):
     """Raised when YAML frontmatter is malformed."""
@@ -92,8 +108,17 @@ class YamlParserService:
         Returns:
             YAML string with --- delimiters.
         """
+        # Create a shallow copy to avoid mutating the original dict in memory
+        serialization_dict = frontmatter.copy()
+
+        # Apply strict normalization and double quoting to the title field
+        raw_title = serialization_dict.get("title")
+        if raw_title is not None and isinstance(raw_title, str):
+            normalized_title = TitleNormalizer.normalize_frontmatter_title(raw_title)
+            serialization_dict["title"] = DoubleQuotedString(normalized_title)
+
         yaml_content = yaml.dump(
-            frontmatter,
+            serialization_dict,
             default_flow_style=False,
             allow_unicode=True,
             sort_keys=False,
