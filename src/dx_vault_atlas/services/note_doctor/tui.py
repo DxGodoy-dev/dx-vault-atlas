@@ -28,7 +28,6 @@ class DoctorTUI:
         invalid = set(result.invalid_fields)
         invalid.discard("dates")
         invalid.discard("integrity_filename")
-        invalid.discard("integrity_aliases")
 
         # Remove extraneous fields — they should be stripped, not fixed
         extraneous = self._get_extraneous_fields(result.frontmatter)
