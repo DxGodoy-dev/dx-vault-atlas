@@ -4,7 +4,6 @@ from typing import Any
 
 from dx_vault_atlas.services.note_migrator.core.interfaces import IUserInterface
 from dx_vault_atlas.shared import console as ui
-from dx_vault_atlas.shared.logger import logger
 
 
 class CliUserInterface(IUserInterface):
@@ -39,11 +38,6 @@ class CliUserInterface(IUserInterface):
                 ui.console.print(f"[red]✗[/red] {value} {key}")
             else:
                 ui.console.print(f"[cyan]-[/cyan] {value} {key}")
-
-    def log_error(self, msg: str) -> None:
-        """Log an error message using rich.print and logger."""
-        ui.console.print(f"[red]Error:[/red] {msg}")
-        logger.error(msg)
 
     def display_message(self, msg: str) -> None:
         """Display a general message using rich console."""

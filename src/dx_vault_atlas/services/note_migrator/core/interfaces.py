@@ -87,10 +87,6 @@ class IUserInterface(Protocol):
         """Print a summary of an operation."""
         ...
 
-    def log_error(self, msg: str) -> None:
-        """Log or display an error message."""
-        ...
-
     def display_message(self, msg: str) -> None:
         """Display a general message to the user."""
         ...
