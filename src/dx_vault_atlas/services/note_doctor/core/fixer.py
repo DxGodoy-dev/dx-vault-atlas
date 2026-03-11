@@ -11,6 +11,7 @@ from dx_vault_atlas.shared.models.enums import (
     NoteArea,
     NoteStatus,
 )
+from dx_vault_atlas.shared.models.defaults import SCHEMA_VERSION
 from dx_vault_atlas.shared.utils.date_resolver import (
     DateResolver,
 )
@@ -403,6 +404,30 @@ class ExtraneousFieldsFixRule:
             logger.debug(
                 f"[Doctor Debug] Fixer 'ExtraneousFieldsFixRule' skipped | model_config.extra={getattr(model_cls, 'model_config', {}).get('extra')}"
             )
+
+        return False
+
+
+class VersionFixRule:
+    """Normalizes the version field to the target SCHEMA_VERSION string."""
+
+    def apply(
+        self,
+        file_path: Path,
+        original: dict[str, Any],
+        updated: dict[str, Any],
+    ) -> bool:
+        logger.debug("[Doctor Debug] Fixer 'VersionFixRule' start")
+        if "version" not in updated:
+            return False
+
+        current = updated["version"]
+        target = str(SCHEMA_VERSION)
+
+        if current != target or not isinstance(current, str):
+            updated["version"] = target
+            logger.debug(f"[Doctor Debug] Fixer normalized version: {current!r} -> {target!r}")
+            return True
 
         return False
 

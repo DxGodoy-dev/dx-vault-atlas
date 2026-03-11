@@ -14,6 +14,7 @@ from dx_vault_atlas.services.note_doctor.core.fixer import (
     EnumFixRule,
     ExtraneousFieldsFixRule,
     NoteFixer,
+    VersionFixRule,
 )
 from dx_vault_atlas.shared.core.io import NoteIOService
 from dx_vault_atlas.services.note_doctor.core.patcher import (
@@ -67,6 +68,7 @@ class DoctorApp:
         self.enum_rule = EnumFixRule()
         self.defaults_rule = DefaultsFixRule()
         self.extraneous_rule = ExtraneousFieldsFixRule()
+        self.version_rule = VersionFixRule()
 
         from dx_vault_atlas.services.note_doctor.core.fixer import (
             IntegrityAliasesFixRule,
@@ -80,6 +82,7 @@ class DoctorApp:
                 self.enum_rule,
                 self.defaults_rule,
                 self.extraneous_rule,
+                self.version_rule,
                 self.integrity_aliases_rule,
             ]
         )
