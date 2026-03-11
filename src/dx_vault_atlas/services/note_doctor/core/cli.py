@@ -62,9 +62,12 @@ class DoctorCLI:
         warnings: int,
         version_outdated: int,
         invalid: int,
+        fixed: int = 0,
     ) -> None:
         """Print summary report."""
         ui.console.print(f"\n[green]✓[/green] {valid} notes healthy")
+        if fixed > 0:
+            ui.console.print(f"[green]✓[/green] {fixed} notes auto-fixed")
 
         if warnings > 0:
             ui.console.print(
