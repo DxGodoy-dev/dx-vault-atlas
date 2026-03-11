@@ -159,6 +159,7 @@ class DoctorApp:
         valid_count = 0
         warn_count = 0
         version_count = 0
+        fixed_count = 0
 
         for note_path in notes:
             outcome = self._classify_note(
@@ -171,6 +172,8 @@ class DoctorApp:
                 warn_count += 1
             elif outcome == "version":
                 version_count += 1
+            elif outcome == "fixed":
+                fixed_count += 1
             else:
                 # outcome is a ValidationResult
                 invalid_results.append(outcome)
@@ -180,6 +183,7 @@ class DoctorApp:
             warn_count,
             version_count,
             len(invalid_results),
+            fixed_count,
         )
         self._process_invalid_results(invalid_results, debug_mode)
 
@@ -194,6 +198,7 @@ class DoctorApp:
             "valid"   – healthy with no warnings
             "warning" – healthy but has warnings
             "version" – only version is outdated
+            "fixed"   – was auto-fixed and is now healthy
             ValidationResult – still invalid after auto-fix
         """
         if debug_mode:
@@ -277,7 +282,8 @@ class DoctorApp:
                         "[Doctor Debug] Re-validation passed. Writing auto-fixed note."
                     )
                 self.io.write_note(note_path, fm_final, body)
-                return self._tag_valid(fixed_result, note_path)
+                self.cli.show_note_fixed(note_path.name)
+                return self._tag_valid(fixed_result, note_path, was_fixed=True)
 
             if debug_mode:
                 logger.debug(
@@ -328,11 +334,14 @@ class DoctorApp:
         self,
         result: ValidationResult,
         note_path: Path,
+        was_fixed: bool = False,
     ) -> str:
         """Print warnings (if any) and return the tag string."""
         self.cli.show_note_warnings(note_path.name, result.warnings)
         if result.warnings:
             return "warning"
+        if was_fixed:
+            return "fixed"
         return "valid"
 
     @staticmethod
