@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Protocol
 
 from packaging.version import parse as parse_version
@@ -134,6 +134,37 @@ class PriorityRule:
             invalid.append("priority")
 
 
+class CreatedFormatRule:
+    """Flag incomplete or invalid 'created' timestamp formats."""
+
+    def check(
+        self,
+        file_path: Path,
+        frontmatter: dict[str, Any],
+        invalid: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Verify that 'created' has both date and time."""
+        val = frontmatter.get("created")
+        if val is None:
+            return
+        
+        # If it's literally just a `date` object and not a `datetime` object, it means
+        # the YAML parser found `YYYY-MM-DD` without a time block.
+        # Note: isinstance(datetime_obj, date) is True, so we must check exact type
+        #       OR check if it's NOT a datetime.
+        if isinstance(val, date) and not isinstance(val, datetime):
+            invalid.append("created")
+            return
+        
+        # If it's a string, it must look like a full timestamp (min len for 2026-01-01 00:00:00)
+        # While Pydantic normally parses the string, the frontmatter parser might return it raw.
+        if isinstance(val, str):
+            # Very basic check: does it have a space or 'T' for time?
+            if " " not in val and "T" not in val.upper():
+                invalid.append("created")
+
+
 class AreaRule:
     """Flag invalid area values."""
 
@@ -223,6 +254,7 @@ class NoteDoctorValidator:
             if rules is not None
             else [
                 IntegrityRule(),
+                CreatedFormatRule(),
                 PriorityRule(),
                 AreaRule(),
                 VersionRule(),

@@ -128,6 +128,14 @@ EXPECTATIONS = {
         "changes_made": True,
         "valid_after_fix": True,
     },
+    # 15: Incomplete Date Test. date fix rule should inject padding.
+    "15_incomplete_date": {
+        "changes_made": True,
+        "valid_after_fix": False, # fails integrity_filename because no timestamp is in the file name
+        "content_contains": [
+            "created: 2026-02-09 00:00:00",
+        ],
+    },
     # 16: updated(01) < created(02). Fixer sets updated=created.
     "16_updated_before_created_20250102120000": {
         "changes_made": True,

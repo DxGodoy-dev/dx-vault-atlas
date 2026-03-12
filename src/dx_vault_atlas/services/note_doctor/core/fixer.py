@@ -154,6 +154,23 @@ class DateFixRule:
                 return True
             return has_changes
 
+        # If true_created is None, the stem did not have a timestamp.
+        # Check if the current_created needs to be coerced into a full datetime
+        # with padded zeros if it is currently just a date without a time.
+        from datetime import date
+        if current_created and isinstance(current_created, date) and not isinstance(current_created, datetime):
+            now_utc = datetime.now(UTC)
+            
+            # Form full datetime with 0 time padded
+            padded_dt = datetime.combine(current_created, datetime.min.time())
+            
+            if _strip_tz(padded_dt) > _strip_tz(now_utc):
+                updated["created"] = None
+                return True
+
+            updated["created"] = padded_dt
+            return True
+
         if current_created and isinstance(current_created, datetime):
             now_utc = datetime.now(UTC)
             if _strip_tz(current_created) > _strip_tz(now_utc):
