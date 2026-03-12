@@ -224,10 +224,6 @@ class DoctorApp:
                 f" | invalid={result.invalid_fields}"
             )
 
-        if debug_mode:
-            print(
-                f"!!! DOCTOR DEBUG: _classify_note | type before fixer={result.frontmatter.get('type')} | path={note_path.name}"
-            )
         has_changes, fm_final, body = self.fixer.fix(
             note_path,
             result.frontmatter.copy(),
@@ -252,9 +248,6 @@ class DoctorApp:
             has_changes = True
 
         if debug_mode:
-            print(
-                f"!!! DOCTOR DEBUG: _classify_note | type after mappings={fm_final.get('type')} | has_changes={has_changes}"
-            )
             logger.debug(
                 f"[DEBUG TRACE] app._classify_note After Mappings | has_changes={has_changes}"
             )

@@ -370,16 +370,12 @@ class NoteDoctorValidator:
                 f"Pydantic errors | {file_path.name}: {_format_pydantic_errors(e)}"
             )
             for error in e.errors():
-                print(
-                    f"!!! DOCTOR DEBUG: Pydantic Error | Type: {error['type']} | Loc: {error['loc']} | Model: {model_cls.__name__}"
-                )
                 logger.debug(
                     f"[DEBUG TRACE] validator._run_pydantic Error item | type={error['type']} | loc={error['loc']}"
                 )
                 # Skip "extra_forbidden" errors — extraneous fields are
                 # handled by the fixer's check_and_fix_extraneous step.
                 if error["type"] in ("extra_forbidden", "value_error.extra"):
-                    print(f"!!! DOCTOR DEBUG: Skipping extra error for {error['loc']}")
                     continue
                 loc = error["loc"]
                 field = str(loc[0]) if loc else "unknown"
