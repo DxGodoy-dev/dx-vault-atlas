@@ -171,6 +171,12 @@ EXPECTATIONS = {
             "created: 2025-12-25 15:30:00",
         ],
     },
+    # 22: Missing 'up' field. Fixer adds up: "[[ ]]".
+    "22_missing_up_field": {
+        "changes_made": True,
+        "valid_after_fix": True,
+        "content_contains": ["up: '[[ ]]'"],
+    },
 }
 
 

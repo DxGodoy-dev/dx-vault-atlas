@@ -11,6 +11,7 @@ priority: 3
 area: work
 tags:
   - example
+up: "[[ ]]"
 ---
 
 # Valid Task Content

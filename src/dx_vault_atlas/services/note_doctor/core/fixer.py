@@ -361,7 +361,7 @@ class DefaultsFixRule:
         updated: dict[str, Any],
     ) -> bool:
         has_changes = False
-        safe_fields = {"status", "version", "tags"}
+        safe_fields = {"status", "version", "tags", "up"}
 
         logger.debug(
             f"[Doctor Debug] Fixer 'DefaultsFixRule' start | safe_fields={safe_fields}"

@@ -31,7 +31,7 @@ class BaseNote(BaseModel):
     created: datetime = Field(default_factory=datetime.now)
     updated: datetime = Field(default_factory=datetime.now)
     note_type: str = Field(..., alias="type", description="Note type")
-    up: str | None = None
+    up: str = Field(default="[[ ]]", description="Link to parent note")
 
     @field_validator("tags", mode="before")
     @classmethod

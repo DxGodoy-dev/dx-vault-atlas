@@ -10,6 +10,7 @@ status: to_do
 priority: High
 area: work
 tags: []
+up: "[[ ]]"
 ---
 
 # Content
