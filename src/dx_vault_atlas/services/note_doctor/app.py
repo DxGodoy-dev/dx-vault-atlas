@@ -478,17 +478,22 @@ class DoctorApp:
 
         stem = result.file_path.stem
 
-        ts_match = DateResolver.extract_timestamp_from_stem(stem)
-
-        # Determine prefix and clean stem
-        if ts_match:
-            # Check if there is a separator directly after the timestamp
-            separator_len = 0
-            if len(stem) > len(ts_match) and stem[len(ts_match)] in ("_", "-"):
-                separator_len = 1
-            prefix = stem[: len(ts_match) + separator_len]
+        created = result.frontmatter.get("created")
+        from datetime import datetime
+        if created and isinstance(created, datetime):
+            prefix = created.strftime("%Y%m%d%H%M%S") + "_"
         else:
-            prefix = ""
+            ts_match = DateResolver.extract_timestamp_from_stem(stem)
+
+            # Determine prefix and clean stem
+            if ts_match:
+                # Check if there is a separator directly after the timestamp
+                separator_len = 0
+                if len(stem) > len(ts_match) and stem[len(ts_match)] in ("_", "-"):
+                    separator_len = 1
+                prefix = stem[: len(ts_match) + separator_len]
+            else:
+                prefix = ""
 
         norm_title = TitleNormalizer.sanitize(title)
         new_name = f"{prefix}{norm_title}{result.file_path.suffix}"

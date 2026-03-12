@@ -22,7 +22,7 @@ class TestNoteValidator:
     @pytest.fixture
     def valid_info_note(self, tmp_path: Path) -> Path:
         """Create a valid info note file."""
-        path = tmp_path / "valid_note.md"
+        path = tmp_path / "20230101120000_valid_note.md"
         content = """---
 title: "Valid Note"
 aliases: ["Valid Note"]
@@ -37,7 +37,6 @@ updated: 2023-01-01T12:00:00
 Some content
 """
         path.write_text(content, encoding="utf-8")
-        return path
         return path
 
     @pytest.fixture
@@ -172,3 +171,24 @@ source: "me"
 
         assert not result.is_valid
         assert "YAML error" in str(result.error)
+
+    def test_validate_invalid_timestamp_prefix(
+        self, validator: NoteDoctorValidator, tmp_path: Path
+    ) -> None:
+        """Should detect mismatch between created field and filename timestamp."""
+        path = tmp_path / "20231201120000_some_note.md"
+        content = """---
+title: "Some Note"
+aliases: ["Some Note"]
+type: info
+priority: 1
+status: "to_do"
+version: "1.0"
+created: 2023-01-01T12:00:00
+---
+"""
+        path.write_text(content, encoding="utf-8")
+        result = validator.validate(path)
+
+        assert not result.is_valid
+        assert "integrity_filename" in result.invalid_fields

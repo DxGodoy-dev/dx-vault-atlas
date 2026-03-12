@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Protocol
 
 from packaging.version import parse as parse_version
@@ -21,6 +22,9 @@ from dx_vault_atlas.shared.models.note import (
 )
 from dx_vault_atlas.shared.utils.title_normalizer import (
     TitleNormalizer,
+)
+from dx_vault_atlas.shared.utils.date_resolver import (
+    DateResolver,
 )
 from dx_vault_atlas.shared.yaml_parser import (
     YamlParseError,
@@ -88,7 +92,17 @@ class IntegrityRule:
         if title and isinstance(title, str):
             norm_title = _normalize(title)
             norm_fname = _normalize(file_path.stem)
-            if norm_title != norm_fname:
+            
+            is_valid = norm_title == norm_fname
+            
+            created = frontmatter.get("created")
+            if created and isinstance(created, datetime):
+                current_ts = DateResolver.extract_timestamp_from_stem(file_path.stem)
+                expected_ts = created.strftime("%Y%m%d%H%M%S")
+                if current_ts != expected_ts:
+                    is_valid = False
+            
+            if not is_valid:
                 invalid.append("integrity_filename")
 
         if (

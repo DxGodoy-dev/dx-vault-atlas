@@ -203,9 +203,16 @@ def test_doctor_scenario(scenario_path: Path, tmp_path: Path) -> None:
             title = parsed.frontmatter.get("title")
             if title and isinstance(title, str):
                 safe = title.lower().replace(" ", "_").replace("-", "_")
-                ts = re.search(r"(\d{12,14})$", scenario_path.stem)
-                if ts:
-                    safe = f"{ts.group(1)}_{safe}"
+                
+                created = parsed.frontmatter.get("created")
+                from datetime import datetime
+                if created and isinstance(created, datetime):
+                    safe = f"{created.strftime('%Y%m%d%H%M%S')}_{safe}"
+                else:
+                    ts = re.search(r"(\d{12,14})$", scenario_path.stem)
+                    if ts:
+                        safe = f"{ts.group(1)}_{safe}"
+                
                 safe += ".md"
                 new_path = tmp_path / safe
                 if new_path != temp_path:
