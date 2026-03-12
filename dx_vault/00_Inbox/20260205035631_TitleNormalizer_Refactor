@@ -1,0 +1,64 @@
+---
+version: 1.0
+title: jejejeje
+aliases: [jejejeje]
+tags: []
+fecha: 2026-02-05
+source: gemini
+type: info
+priority: 3
+---
+
+# TitleNormalizer: Obsidian Standard 2026
+
+Este módulo centraliza la creación de nombres de archivos para Obsidian, garantizando unicidad mediante *timestamps* y robustez ante errores de codificación de la terminal.
+
+## 1. Entrada Segura (Anti-Crash)
+La función `get_safe_input` actúa como un escudo para evitar el `UnicodeDecodeError` cuando el usuario ingresa caracteres especiales (como la `ñ` o acentos) que la terminal no puede procesar correctamente en el buffer de entrada.
+
+```python
+@classmethod
+def get_safe_input(cls, prompt: str) -> str:
+    """Lee del buffer crudo para evitar fallos de decodificación."""
+    print(prompt, end=" ", flush=True)
+    # Leemos bytes directamente del sistema
+    raw_line = sys.stdin.buffer.readline()
+    # Decodificamos permitiendo reemplazo de bytes corruptos
+    return raw_line.decode('utf-8', errors='replace').strip()
+```
+
+## 2. Orquestación y Timestamp
+El método `normalize` es el único punto de entrada público. Gestiona la jerarquía del nombre: primero el tiempo (para ordenación cronológica) y luego el contenido saneado.
+
+```python
+@classmethod
+def normalize(cls, raw_title: str) -> str:
+    """Formato: YYYYMMDDHHMMSS_titulo_saneado"""
+    if not raw_title or not raw_title.strip():
+        raise ValueError("El título no puede estar vacío.")
+
+    # Timestamp de alta precisión (AñoMesDiaHoraMinutoSegundo)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    clean_name = cls._sanitize(raw_title)
+    
+    return f"{timestamp}_{clean_name}"
+```
+
+## 3. Saneamiento Técnico (Snake Case)
+La lógica interna `_sanitize` transforma cualquier cadena en un formato amigable para sistemas de archivos, eliminando acentos y caracteres no alfanuméricos.
+
+```python
+@staticmethod
+def _sanitize(text: str) -> str:
+    """Lógica privada de limpieza profunda."""
+    # Eliminación de acentos mediante NFKD y filtrado ASCII
+    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+    
+    # Normalización a minúsculas y regex para snake_case
+    text = text.lower()
+    # Reemplaza cualquier secuencia no alfanumérica por un solo underscore
+    text = re.sub(r'[^a-z0-9]+', '_', text)
+    
+    return text.strip('_')
+```
+

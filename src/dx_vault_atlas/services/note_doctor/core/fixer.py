@@ -154,6 +154,28 @@ class DateFixRule:
                 return True
             return has_changes
 
+        # Auto-fix latin date formats (DD-MM-YYYY or DD/MM/YYYY)
+        if isinstance(current_created, str):
+            import re
+            match = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})(.*)$", current_created.strip())
+            if match:
+                dd, mm, yyyy, rest = match.groups()
+                if 1 <= int(dd) <= 31 and 1 <= int(mm) <= 12:
+                    try:
+                        rest_str = rest.strip()
+                        if not rest_str:
+                            from datetime import date
+                            parsed_dt = datetime.strptime(f"{yyyy}-{mm}-{dd}", "%Y-%m-%d").date()
+                            current_created = parsed_dt
+                            updated["created"] = parsed_dt
+                            has_changes = True
+                        else:
+                            parsed_dt = datetime.strptime(f"{yyyy}-{mm}-{dd} {rest_str.lstrip('T ')}", "%Y-%m-%d %H:%M:%S")
+                            updated["created"] = parsed_dt
+                            return True
+                    except ValueError:
+                        pass
+
         # If true_created is None, the stem did not have a timestamp.
         # Check if the current_created needs to be coerced into a full datetime
         # with padded zeros if it is currently just a date without a time.

@@ -163,6 +163,14 @@ EXPECTATIONS = {
             "status: to_do",
         ],
     },
+    # 21: Latin formatting for dates (DD-MM-YYYY) should be auto-fixed to ISO format.
+    "21_latin_date_format": {
+        "changes_made": True,
+        "valid_after_fix": False,
+        "content_contains": [
+            "created: 2025-12-25 15:30:00",
+        ],
+    },
 }
 
 

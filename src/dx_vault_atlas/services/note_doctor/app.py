@@ -464,7 +464,7 @@ class DoctorApp:
         self,
         result: ValidationResult,
     ) -> tuple[Path, ValidationResult] | None:
-        """Offer to rename file to match title."""
+        """Automatically rename file to match title/timestamp."""
         title = result.frontmatter.get("title", "")
         if not title:
             return None
@@ -493,9 +493,6 @@ class DoctorApp:
         new_path = result.file_path.parent / new_name
 
         if new_path == result.file_path:
-            return None
-
-        if not self.cli.prompt_rename(result.file_path.name, new_name):
             return None
 
         success = self.io.rename_note(result.file_path, new_path)
